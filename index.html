@@ -2,32 +2,22 @@
 <html lang="de">
 <head>
     <meta charset="UTF-8">
-    <title>Physische Europakarte Topographie Test</title>
+    <title>Interaktive Europakarte - Quiz & Explore</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
-        body, html { height: 100%; margin: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body, html { height: 100%; margin: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; overflow: hidden; }
         
         /* Karten-Container */
         #map { height: 100vh; width: 100%; background: #aad3df; z-index: 1; }
         
-        /* Layer Control Anpassung */
-        .leaflet-control-layers { 
-            background: rgba(255, 255, 255, 0.95) !important; 
-            box-shadow: 0 0 15px rgba(0,0,0,0.3) !important;
-            border-radius: 8px !important;
-            padding: 10px !important;
-        }
-
-        /* Popup Styling */
-        .cat-header { font-size: 0.75em; font-weight: bold; text-transform: uppercase; color: #555; border-bottom: 1px solid #ccc; margin-bottom: 5px; padding-bottom: 2px; }
-        .item-name { font-size: 1.2em; font-weight: bold; color: #2c3e50; }
-
-        /* --- SUCHFUNKTION STYLING --- */
+        /* --- UI STYLING --- */
+        
+        /* 1. Suchleiste (Oben Links) */
         #search-container {
             position: absolute;
             top: 20px;
-            left: 60px; /* Platz für Zoom-Buttons lassen */
+            left: 20px;
             z-index: 1000;
             width: 320px;
         }
@@ -39,10 +29,10 @@
             border-radius: 30px;
             font-size: 15px;
             outline: none;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
             transition: all 0.3s;
         }
-        #search-input:focus { box-shadow: 0 6px 15px rgba(0,0,0,0.3); transform: scale(1.02); }
+        #search-input:focus { box-shadow: 0 6px 15px rgba(0,0,0,0.4); transform: scale(1.02); }
 
         #search-results {
             background: white;
@@ -62,20 +52,79 @@
             justify-content: space-between;
             align-items: center;
         }
-        .search-item:last-child { border-bottom: none; }
-        .search-item:hover { background-color: #f0f8ff; }
-        .search-item.active { background-color: #e6f7ff; border-left: 4px solid #3498db; }
-        
+        .search-item:hover, .search-item.active { background-color: #f0f8ff; }
         .search-name { font-weight: 600; color: #333; }
-        .search-type { font-size: 0.75em; color: #888; background: #eee; padding: 2px 6px; border-radius: 4px; }
+        .search-type { font-size: 0.75em; color: #666; background: #eee; padding: 2px 6px; border-radius: 4px; }
+
+        /* 2. Quiz-Panel (Unten Links) */
+        #quiz-panel {
+            position: absolute;
+            bottom: 30px;
+            left: 20px;
+            z-index: 1000;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 20px;
+            border-radius: 15px;
+            box-shadow: 0 0 20px rgba(0,0,0,0.2);
+            width: 300px;
+            text-align: center;
+            transition: transform 0.3s ease;
+        }
+        
+        #quiz-title { font-size: 1.2em; font-weight: bold; margin-bottom: 10px; color: #2c3e50; }
+        #quiz-question { font-size: 1.1em; margin: 15px 0; font-weight: 500; color: #d35400; min-height: 1.2em; }
+        #quiz-score { font-size: 0.9em; color: #7f8c8d; margin-bottom: 15px; }
+        
+        .btn {
+            background: #3498db; color: white; border: none; padding: 10px 20px;
+            border-radius: 25px; cursor: pointer; font-size: 1em; font-weight: bold;
+            transition: background 0.2s;
+        }
+        .btn:hover { background: #2980b9; }
+        .btn-stop { background: #e74c3c; display: none; margin-top: 10px; }
+        .btn-stop:hover { background: #c0392b; }
+
+        /* Feedback-Nachrichten (Overlay) */
+        #quiz-feedback {
+            position: absolute;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0,0,0,0.8);
+            color: white;
+            padding: 20px 40px;
+            border-radius: 10px;
+            font-size: 2em;
+            font-weight: bold;
+            z-index: 2000;
+            display: none;
+            pointer-events: none;
+        }
+
+        /* Leaflet Controls Anpassung */
+        .leaflet-control-layers { 
+            border-radius: 8px !important; 
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2) !important;
+            padding: 10px !important;
+        }
+        
     </style>
 </head>
 <body>
 
 <div id="search-container">
-    <input type="text" id="search-input" placeholder="🔍 Suche nach Berg, Stadt, Fluss... (Enter)">
+    <input type="text" id="search-input" placeholder="🔍 Suche (Enter zum Bestätigen)...">
     <div id="search-results"></div>
 </div>
+
+<div id="quiz-panel">
+    <div id="quiz-title">🎓 Geografie-Quiz</div>
+    <div id="quiz-score">Punkte: 0 | Fragen: 0</div>
+    <div id="quiz-question">Drücke Start!</div>
+    <button class="btn" id="start-btn" onclick="startQuiz()">Quiz Starten</button>
+    <button class="btn btn-stop" id="stop-btn" onclick="stopQuiz()">Beenden</button>
+</div>
+
+<div id="quiz-feedback"></div>
 
 <div id="map"></div>
 
@@ -89,14 +138,14 @@
     // --- 2. BASE-LAYERS ---
     var openTopo = L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {
         maxZoom: 17,
-        attribution: 'Map data: © OpenStreetMap, SRTM | Map style: © OpenTopoMap'
+        attribution: 'Map style: © OpenTopoMap'
     }).addTo(map);
 
-    var esriSattelite = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+    var esriSatellite = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
         attribution: 'Tiles © Esri'
     });
 
-    // --- 3. LAYER GRUPPEN ---
+    // --- 3. DATEN-STRUKTUREN ---
     var lgLaender = L.layerGroup();
     var lgGebirge = L.layerGroup();
     var lgTiefland = L.layerGroup();
@@ -105,7 +154,95 @@
     var lgInseln = L.layerGroup();
     var lgStaedte = L.layerGroup();
 
-    // --- 4. LÄNDERGRENZEN ---
+    // Globaler Index für Suche & Quiz
+    let searchIndex = [];
+    let quizActive = false;
+    let currentTarget = null;
+    let score = 0;
+    let questionsCount = 0;
+
+    // --- 4. STYLES (Normal & Hover) ---
+    // Hover-Stil: Etwas heller/kräftiger
+    const sGebirge = { normal: { color: '#8B4513', fillColor: '#A0522D', weight: 1, fillOpacity: 0.35 }, hover: { weight: 2, fillOpacity: 0.6 } };
+    const sTiefland = { normal: { color: '#228B22', fillColor: '#90EE90', weight: 1, fillOpacity: 0.25 }, hover: { weight: 2, fillOpacity: 0.5 } };
+    const sSee = { normal: { color: '#2980b9', fillColor: '#3498db', weight: 1, fillOpacity: 0.6 }, hover: { weight: 2, fillOpacity: 0.8 } };
+    const sInsel = { normal: { color: '#6c5ce7', fillColor: '#a29bfe', weight: 1, fillOpacity: 0.3 }, hover: { weight: 2, fillOpacity: 0.6 } };
+    const sFluss = { normal: { color: '#1e3799', weight: 2.5, opacity: 0.9 }, hover: { weight: 5, color: '#0056b3' } };
+
+    // --- 5. CORE FUNKTIONEN (Rendering mit Events) ---
+
+    // Generische Funktion für Polygone (Gebirge, Seen, etc.)
+    function addPoly(group, coords, name, styleObj, type) {
+        let p = L.polygon(coords, styleObj.normal).addTo(group);
+        
+        // Tooltip (Hover Label)
+        p.bindTooltip(name, { sticky: true, direction: 'top', offset: [0, -10] });
+
+        // Events: Hover, Click (Info vs Quiz)
+        p.on({
+            mouseover: (e) => { 
+                if(!quizActive) e.target.setStyle(styleObj.hover); 
+            },
+            mouseout: (e) => { 
+                if(!quizActive) e.target.setStyle(styleObj.normal); 
+            },
+            click: (e) => handleMapClick(e, name, type, p)
+        });
+
+        searchIndex.push({ name: name, layer: p, type: type, group: group });
+    }
+
+    // Generische Funktion für Linien (Flüsse)
+    function addLine(group, coords, name, type) {
+        // Größere "Hitbox" für Flüsse (unsichtbare dicke Linie darunter), damit man sie leichter trifft
+        L.polyline(coords, { weight: 15, opacity: 0 }).addTo(group).on('click', (e) => handleMapClick(e, name, type, l));
+
+        let l = L.polyline(coords, sFluss.normal).addTo(group);
+        l.bindTooltip(name, { sticky: true });
+
+        l.on({
+            mouseover: (e) => { if(!quizActive) e.target.setStyle(sFluss.hover); },
+            mouseout: (e) => { if(!quizActive) e.target.setStyle(sFluss.normal); },
+            click: (e) => handleMapClick(e, name, type, l)
+        });
+
+        searchIndex.push({ name: name, layer: l, type: type, group: group });
+    }
+
+    // Funktion für Städte (Punkte)
+    function addCity(group, coords, name) {
+        let m = L.circleMarker(coords, { radius: 6, color: '#000', fillColor: '#fff', weight: 1.5, fillOpacity: 1 }).addTo(group);
+        m.bindTooltip(name, { direction: 'top', offset: [0, -5] });
+        
+        m.on({
+            mouseover: (e) => { if(!quizActive) e.target.setStyle({ radius: 9, fillColor: '#ffff00' }); },
+            mouseout: (e) => { if(!quizActive) e.target.setStyle({ radius: 6, fillColor: '#fff' }); },
+            click: (e) => handleMapClick(e, name, "Hauptstadt", m)
+        });
+
+        searchIndex.push({ name: name, layer: m, type: "Hauptstadt", group: group });
+    }
+
+    // ZENTRALE KLICK-LOGIK
+    function handleMapClick(e, name, type, layer) {
+        if (quizActive) {
+            checkAnswer(name);
+        } else {
+            // Normalmodus: Popup öffnen
+            let content = `<div class="cat-header">${type}</div><div class="item-name">${name}</div>`;
+            // Optional: Koordinaten anzeigen
+            content += `<br><small style="color:#888">Lat: ${e.latlng.lat.toFixed(2)}, Lng: ${e.latlng.lng.toFixed(2)}</small>`;
+            
+            L.popup()
+                .setLatLng(e.latlng)
+                .setContent(content)
+                .openOn(map);
+        }
+        L.DomEvent.stopPropagation(e); // Verhindert Klick auf darunterliegende Layer
+    }
+
+    // --- 6. DATEN (Kopiert und Integriert) ---
+    // LÄNDERGRENZEN
     fetch('https://raw.githubusercontent.com/datasets/geo-boundaries-world-110m/master/countries.geojson')
         .then(res => res.json())
         .then(data => {
@@ -115,32 +252,7 @@
             }).addTo(lgLaender);
         });
 
-    // --- 5. HILFSFUNKTIONEN ---
-    const sGebirge = { color: '#8B4513', fillColor: '#A0522D', weight: 1, fillOpacity: 0.35 };
-    const sTiefland = { color: '#228B22', fillColor: '#90EE90', weight: 1, fillOpacity: 0.25 };
-    const sSee = { color: '#2980b9', fillColor: '#3498db', weight: 1, fillOpacity: 0.6 };
-    const sInsel = { color: '#6c5ce7', fillColor: '#a29bfe', weight: 1, fillOpacity: 0.3 };
-    const sFluss = { color: '#1e3799', weight: 2.5, opacity: 0.9 };
-
-    let searchIndex = [];
-
-    function addPoly(group, coords, name, style, type) {
-        let p = L.polygon(coords, style).bindPopup(createPopup(type, name)).addTo(group);
-        searchIndex.push({ name: name, layer: p, type: type });
-    }
-
-    function addLine(group, coords, name, type) {
-        let l = L.polyline(coords, sFluss).bindPopup(createPopup(type, name)).addTo(group);
-        searchIndex.push({ name: name, layer: l, type: type });
-    }
-
-    function createPopup(type, name) {
-        return `<div class="cat-header">${type}</div><div class="item-name">${name}</div>`;
-    }
-
-    // --- 6. DATEN (PRÄZISIERT) ---
-
-    // A. GEBIRGE
+    // DATENSÄTZE
     const dGebirge = [
         {n: "Skandinavisches Gebirge", c: [[58.5,6.0], [61.0,7.5], [63.0,11.0], [68.0,18.0], [70.5,23.0], [69.5,26.0], [66.0,19.0], [61.5,12.0], [59.0,9.0]]},
         {n: "Ural", c: [[68.0,66.0], [66.0,65.0], [62.0,59.0], [59.0,59.0], [55.0,59.0], [51.0,58.0], [51.0,61.0], [55.0,61.5], [62.0,61.0], [67.0,67.5]]},
@@ -169,7 +281,6 @@
         {n: "Timanrücken", c: [[63.0,50.0], [65.0,49.0], [67.0,48.0], [67.5,50.0], [65.0,53.0]]}
     ];
 
-    // B. TIEFLÄNDER
     const dTiefland = [
         {n: "Norddt. Tiefland", c: [[52.0,6.0], [54.0,7.5], [54.5,13.5], [52.5,14.5], [51.5,11.0]]},
         {n: "Londoner Becken", c: [[51.2,-1.2], [51.9,0.5], [51.5,1.2], [51.0,0.5]]},
@@ -188,7 +299,6 @@
         {n: "Poebene", c: [[44.8,7.5], [45.5,9.5], [45.5,12.5], [44.5,12.0]]}
     ];
 
-    // C. INSELN & HALBINSELN (Präzise Boxen)
     const dInseln = [
         {n: "Island", c: [[63.4,-24.5], [66.5,-24.5], [66.5,-13.5], [63.4,-13.5]]}, 
         {n: "Lofoten", c: [[67.4,11.9], [68.3,13.5], [69.4,16.2], [68.2,15.5]]},
@@ -221,7 +331,6 @@
         {n: "Rhodos", c: [[35.8,27.7], [36.4,28.2], [35.9,28.0]]}
     ];
 
-    // D. FLÜSSE (Wichtige Biegungen hinzugefügt)
     const dFluesse = [
         {n: "Glama", c: [[62.0,11.5], [61.1,11.3], [60.2,11.7], [59.2,10.9]]},
         {n: "Klarälv", c: [[62.5,12.0], [61.0,13.0], [59.4,13.5]]},
@@ -285,7 +394,6 @@
         {n: "Maritza", c: [[42.2,23.6], [42.1,25.0], [41.7,26.2], [40.7,26.1]]}
     ];
 
-    // E. SEEN & STAUSEEN
     const dSeen = [
         {n: "Ladogasee", c: [[59.9,30.0], [61.0,30.0], [61.7,31.5], [61.0,33.0], [60.0,32.5]]},
         {n: "Onegasee", c: [[61.0,34.2], [62.5,34.5], [62.8,36.0], [61.5,36.5], [60.9,35.8]]},
@@ -306,7 +414,6 @@
         {n: "Kachiwkaer Stausee", c: [[46.8,33.5], [47.5,35.0], [47.3,35.5], [46.7,34.0]]}
     ];
 
-    // F. STÄDTE / HAUPTSTÄDTE (Exakte Geo-Koordinaten)
     const dStaedte = [
         {n: "Tirana", c: [41.3275, 19.8187]}, {n: "Andorra la Vella", c: [42.5063, 1.5218]},
         {n: "Brüssel", c: [50.8503, 4.3517]}, {n: "Sarajevo", c: [43.8563, 18.4131]},
@@ -334,20 +441,16 @@
         {n: "Nikosia", c: [35.1856, 33.3823]}
     ];
 
-    // --- 7. RENDERING ---
+    // --- 7. DATEN RENDERING ---
     dGebirge.forEach(x => addPoly(lgGebirge, x.c, x.n, sGebirge, "Gebirge"));
     dTiefland.forEach(x => addPoly(lgTiefland, x.c, x.n, sTiefland, "Landschaft"));
     dSeen.forEach(x => addPoly(lgSeen, x.c, x.n, sSee, "Gewässer"));
     dInseln.forEach(x => addPoly(lgInseln, x.c, x.n, sInsel, "Insel"));
     dFluesse.forEach(x => addLine(lgFluesse, x.c, x.n, "Fluss"));
-    dStaedte.forEach(s => {
-        let m = L.circleMarker(s.c, { radius: 5, color: '#000', fillColor: '#fff', weight: 1.5, fillOpacity: 1 })
-                 .bindPopup(`<b>${s.n}</b><br>Hauptstadt`).addTo(lgStaedte);
-        searchIndex.push({ name: s.n, layer: m, type: "Hauptstadt" });
-    });
+    dStaedte.forEach(x => addCity(lgStaedte, x.c, x.n));
 
-    // --- 8. STEUERUNG ---
-    var baseMaps = { "⛰️ Physisches Relief": openTopo, "🛰️ Satellit": esriSattelite };
+    // --- 8. LAYER CONTROL (FILTER) ---
+    var baseMaps = { "⛰️ Physisch": openTopo, "🛰️ Satellit": esriSatellite };
     var overlays = {
         "🏳️ Ländergrenzen": lgLaender,
         "🏙️ Städte": lgStaedte,
@@ -358,62 +461,117 @@
         "🏝️ Inseln": lgInseln
     };
 
-    L.control.layers(baseMaps, overlays, {collapsed: false}).addTo(map);
+    var layerControl = L.control.layers(baseMaps, overlays, {collapsed: false}).addTo(map);
+    
+    // Standard-Layer aktivieren
     lgLaender.addTo(map);
     lgGebirge.addTo(map);
     lgFluesse.addTo(map);
     lgStaedte.addTo(map);
+    lgSeen.addTo(map);
+    lgInseln.addTo(map);
 
-    // --- 9. SUCH-LOGIK (MIT ENTER-FUNKTION) ---
+
+    // --- 9. QUIZ LOGIK ---
+    
+    function startQuiz() {
+        quizActive = true;
+        score = 0;
+        questionsCount = 0;
+        
+        document.getElementById('start-btn').style.display = 'none';
+        document.getElementById('stop-btn').style.display = 'inline-block';
+        
+        // Alle Layer sichtbar machen für Fairness
+        map.addLayer(lgGebirge); map.addLayer(lgFluesse); map.addLayer(lgStaedte);
+        map.addLayer(lgSeen); map.addLayer(lgInseln); map.addLayer(lgTiefland);
+
+        nextQuestion();
+    }
+
+    function stopQuiz() {
+        quizActive = false;
+        currentTarget = null;
+        document.getElementById('quiz-question').innerText = "Quiz beendet.";
+        document.getElementById('start-btn').style.display = 'inline-block';
+        document.getElementById('stop-btn').style.display = 'none';
+    }
+
+    function nextQuestion() {
+        if (!quizActive) return;
+        questionsCount++;
+        
+        // Zufälliges Element wählen
+        const item = searchIndex[Math.floor(Math.random() * searchIndex.length)];
+        currentTarget = item;
+        
+        document.getElementById('quiz-score').innerText = `Punkte: ${score} | Fragen: ${questionsCount}`;
+        document.getElementById('quiz-question').innerText = `Wo ist: ${item.name}?`;
+    }
+
+    function checkAnswer(clickedName) {
+        if (!quizActive || !currentTarget) return;
+
+        const feedback = document.getElementById('quiz-feedback');
+        
+        if (clickedName === currentTarget.name) {
+            score++;
+            feedback.innerText = "✅ Richtig!";
+            feedback.style.background = "rgba(46, 204, 113, 0.9)";
+            feedback.style.display = 'block';
+            setTimeout(() => { feedback.style.display = 'none'; nextQuestion(); }, 1000);
+        } else {
+            feedback.innerText = "❌ Falsch!";
+            feedback.style.background = "rgba(231, 76, 60, 0.9)";
+            feedback.style.display = 'block';
+            setTimeout(() => { feedback.style.display = 'none'; }, 1000);
+        }
+        
+        document.getElementById('quiz-score').innerText = `Punkte: ${score} | Fragen: ${questionsCount}`;
+    }
+
+
+    // --- 10. SUCH-LOGIK (Smart Zoom & Auto-Layer) ---
     const sInput = document.getElementById('search-input');
     const sRes = document.getElementById('search-results');
     let currentMatches = [];
 
-    // Funktion zum Ausführen des Zooms
     function zoomToItem(item) {
-        // Layer sichtbar machen falls nötig (einfacher Check)
-        if (!map.hasLayer(item.layer)) {
-             // Hinweis: Bei LayerGroups ist Layer-Check komplexer, wir vertrauen hier auf Zoom
+        // Auto-Layer: Wenn Layer aus ist, schalte ihn an!
+        if (!map.hasLayer(item.group)) {
+            map.addLayer(item.group);
+            // Optional: Haken in der Layer-Control setzen (visuell)
         }
 
         if (item.layer.getBounds) {
-            // Für Polygone/Linien
-            map.fitBounds(item.layer.getBounds(), { padding: [50, 50], maxZoom: 8 });
+            map.fitBounds(item.layer.getBounds(), { padding: [100, 100], maxZoom: 9 });
         } else {
-            // Für Punkte (Städte)
             map.setView(item.layer.getLatLng(), 8);
         }
         
         // Popup öffnen
-        setTimeout(() => item.layer.openPopup(), 400);
+        item.layer.openPopup();
         
-        // UI aufräumen
         sRes.style.display = 'none';
         sInput.value = item.name;
     }
 
-    // Input Event Listener
     sInput.addEventListener('input', function() {
         const val = this.value.toLowerCase();
         sRes.innerHTML = '';
-        currentMatches = []; // Reset
+        currentMatches = [];
         
-        if (val.length < 2) { 
-            sRes.style.display = 'none'; 
-            return; 
-        }
+        if (val.length < 2) { sRes.style.display = 'none'; return; }
 
         currentMatches = searchIndex.filter(i => i.name.toLowerCase().includes(val));
-        const showMatches = currentMatches.slice(0, 10);
+        const showMatches = currentMatches.slice(0, 8);
 
         if (showMatches.length > 0) {
             sRes.style.display = 'block';
             showMatches.forEach((m, index) => {
                 let div = document.createElement('div');
                 div.className = 'search-item';
-                // Markiere erstes Element visuell als "aktiv" für Enter
-                if (index === 0) div.classList.add('active'); 
-                
+                if (index === 0) div.classList.add('active');
                 div.innerHTML = `<span class="search-name">${m.name}</span><span class="search-type">${m.type}</span>`;
                 div.onclick = () => zoomToItem(m);
                 sRes.appendChild(div);
@@ -423,19 +581,16 @@
         }
     });
 
-    // Enter Key Listener
     sInput.addEventListener('keydown', function(e) {
         if (e.key === 'Enter') {
-            e.preventDefault(); // Verhindert Form-Submit falls vorhanden
+            e.preventDefault();
             if (currentMatches.length > 0) {
-                // Wähle das erste (beste) Ergebnis
                 zoomToItem(currentMatches[0]);
-                sInput.blur(); // Fokus entfernen (Tastatur auf Handy weg)
+                sInput.blur();
             }
         }
     });
 
-    // Schließen beim Klick außerhalb
     document.addEventListener('click', (e) => {
         if (!document.getElementById('search-container').contains(e.target)) {
             sRes.style.display = 'none';
@@ -445,4 +600,3 @@
 </script>
 </body>
 </html>
-
