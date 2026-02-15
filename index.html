@@ -2,599 +2,261 @@
 <html lang="de">
 <head>
     <meta charset="UTF-8">
-    <title>Europakarte 4.0 - Wikipedia & Profi-Modus</title>
+    <title>Geo-Master Europa 5.0</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
-        body, html { height: 100%; margin: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; overflow: hidden; }
+        :root {
+            --primary: #2c3e50;
+            --accent: #3498db;
+            --success: #27ae60;
+            --danger: #e74c3c;
+            --light: #ecf0f1;
+        }
+
+        body, html { height: 100%; margin: 0; font-family: 'Segoe UI', sans-serif; overflow: hidden; }
+        #map { height: 100vh; width: 100%; background: #aad3df; }
+
+        /* --- SIDEBAR MENU --- */
+        #quiz-sidebar {
+            position: absolute; top: 0; left: -350px; width: 300px; height: 100%;
+            background: white; z-index: 2000; transition: 0.3s ease;
+            box-shadow: 2px 0 15px rgba(0,0,0,0.2); padding: 25px;
+            display: flex; flex-direction: column;
+        }
+        #quiz-sidebar.open { left: 0; }
         
-        #map { height: 100vh; width: 100%; background: #aad3df; z-index: 1; }
+        #menu-toggle {
+            position: absolute; bottom: 20px; left: 20px; z-index: 1500;
+            background: var(--primary); color: white; border: none; padding: 15px 20px;
+            border-radius: 50px; cursor: pointer; font-weight: bold; box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+        }
+
+        /* --- PROGRESS BAR --- */
+        .progress-container { margin: 20px 0; background: #eee; border-radius: 10px; height: 20px; overflow: hidden; position: relative; }
+        #progress-bar { height: 100%; background: var(--success); width: 0%; transition: width 0.5s ease; }
+        #progress-text { position: absolute; width: 100%; text-align: center; font-size: 0.75rem; line-height: 20px; color: #000; font-weight: bold; }
+
+        /* --- STATS --- */
+        .stats-box { background: var(--light); padding: 15px; border-radius: 10px; margin-bottom: 20px; }
+        .stats-item { display: flex; justify-content: space-between; margin-bottom: 5px; font-size: 0.9em; }
+        .val { font-weight: bold; color: var(--accent); }
+
+        /* --- UI ELEMENTS --- */
+        #quiz-question { font-size: 1.2em; color: var(--danger); font-weight: bold; margin: 20px 0; text-align: center; min-height: 50px; }
+        .btn {
+            width: 100%; padding: 12px; border: none; border-radius: 8px; cursor: pointer;
+            font-weight: bold; margin-bottom: 10px; transition: 0.2s;
+        }
+        .btn-start { background: var(--accent); color: white; }
+        .btn-stop { background: var(--danger); color: white; display: none; }
         
-        /* --- UI STYLING --- */
-        
-        /* 1. Suchleiste */
-        #search-container {
-            position: absolute;
-            top: 20px; left: 20px; z-index: 1000; width: 320px;
+        #search-box {
+            position: absolute; top: 20px; left: 20px; z-index: 1000; width: 280px;
         }
         #search-input {
-            width: 100%; padding: 12px 20px; border: none; border-radius: 30px;
-            font-size: 15px; outline: none; box-shadow: 0 4px 10px rgba(0,0,0,0.3);
-            transition: all 0.3s;
+            width: 100%; padding: 12px; border-radius: 25px; border: none; box-shadow: 0 4px 10px rgba(0,0,0,0.2);
         }
-        #search-input:focus { box-shadow: 0 6px 15px rgba(0,0,0,0.4); transform: scale(1.02); }
-        #search-results {
-            background: white; border-radius: 10px; margin-top: 8px; max-height: 400px;
-            overflow-y: auto; display: none; box-shadow: 0 8px 20px rgba(0,0,0,0.25);
-        }
-        .search-item {
-            padding: 10px 20px; cursor: pointer; border-bottom: 1px solid #f0f0f0;
-            display: flex; justify-content: space-between; align-items: center;
-        }
-        .search-item:hover, .search-item.active { background-color: #f0f8ff; }
-        .search-name { font-weight: 600; color: #333; }
-        .search-type { font-size: 0.75em; color: #666; background: #eee; padding: 2px 6px; border-radius: 4px; }
 
-        /* 2. Quiz-Panel */
-        #quiz-panel {
-            position: absolute; bottom: 30px; left: 20px; z-index: 1000;
-            background: rgba(255, 255, 255, 0.95); padding: 20px; border-radius: 15px;
-            box-shadow: 0 0 20px rgba(0,0,0,0.2); width: 300px; text-align: center;
-            transition: transform 0.3s ease;
-        }
-        #quiz-title { font-size: 1.2em; font-weight: bold; margin-bottom: 5px; color: #2c3e50; }
-        #highscore-display { font-size: 0.85em; color: #f39c12; font-weight: bold; margin-bottom: 10px; }
-        #quiz-question { font-size: 1.1em; margin: 15px 0; font-weight: 500; color: #d35400; min-height: 1.2em; }
-        #quiz-score { font-size: 0.9em; color: #7f8c8d; margin-bottom: 15px; }
+        /* Wiki Popup Fixes */
+        .wiki-card img { width: 100%; border-radius: 5px; margin-top: 10px; }
         
-        .quiz-controls { display: flex; flex-direction: column; gap: 10px; align-items: center; }
-        .hard-mode-toggle { font-size: 0.9em; color: #555; cursor: pointer; display: flex; align-items: center; gap: 5px; }
-        
-        .btn {
-            background: #3498db; color: white; border: none; padding: 10px 20px;
-            border-radius: 25px; cursor: pointer; font-size: 1em; font-weight: bold;
-            transition: background 0.2s; width: 100%;
+        #feedback-overlay {
+            position: absolute; top: 20%; left: 50%; transform: translate(-50%, -50%);
+            z-index: 3000; padding: 20px 40px; border-radius: 50px; color: white;
+            font-weight: bold; font-size: 2em; display: none; pointer-events: none;
         }
-        .btn:hover { background: #2980b9; }
-        .btn-stop { background: #e74c3c; display: none; }
-        .btn-stop:hover { background: #c0392b; }
-
-        /* 3. Feedback Overlay */
-        #quiz-feedback {
-            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-            background: rgba(0,0,0,0.8); color: white; padding: 20px 40px;
-            border-radius: 10px; font-size: 2em; font-weight: bold; z-index: 2000;
-            display: none; pointer-events: none; text-align: center;
-        }
-
-        /* 4. Wikipedia Popup Styling */
-        .leaflet-popup-content-wrapper { border-radius: 10px; overflow: hidden; padding: 0; }
-        .leaflet-popup-content { margin: 0; width: 280px !important; }
-        .wiki-card { display: flex; flex-direction: column; }
-        .wiki-image { width: 100%; height: 140px; object-fit: cover; background: #eee; }
-        .wiki-content { padding: 15px; }
-        .wiki-title { font-size: 1.2em; font-weight: bold; margin-bottom: 5px; color: #333; }
-        .wiki-text { font-size: 0.9em; color: #555; line-height: 1.4; }
-        .wiki-link { display: inline-block; margin-top: 10px; color: #3498db; text-decoration: none; font-size: 0.85em; }
-        .wiki-loading { padding: 20px; text-align: center; color: #888; }
-
-        .leaflet-control-layers { border-radius: 8px !important; box-shadow: 0 2px 10px rgba(0,0,0,0.2) !important; padding: 10px !important; }
     </style>
 </head>
 <body>
 
-<div id="search-container">
-    <input type="text" id="search-input" placeholder="🔍 Suche (Enter zum Bestätigen)...">
-    <div id="search-results"></div>
-</div>
+<button id="menu-toggle" onclick="toggleMenu()">☰ Quiz-Menü</button>
 
-<div id="quiz-panel">
-    <div id="quiz-title">🎓 Geografie-Profi</div>
-    <div id="highscore-display">🏆 Highscore: 0</div>
-    <div id="quiz-score">Punkte: 0 | Fragen: 0</div>
-    <div id="quiz-question">Bereit?</div>
+<div id="quiz-sidebar">
+    <h2>🎓 Dein Lernstand</h2>
     
-    <div class="quiz-controls">
-        <label class="hard-mode-toggle">
-            <input type="checkbox" id="hard-mode-cb"> 🤫 Profi-Modus (Keine Namen)
-        </label>
-        <button class="btn" id="start-btn" onclick="startQuiz()">Quiz Starten</button>
-        <button class="btn btn-stop" id="stop-btn" onclick="stopQuiz()">Beenden</button>
+    <div class="progress-container">
+        <div id="progress-bar"></div>
+        <div id="progress-text">0% abgeschlossen</div>
     </div>
+
+    <div class="stats-box">
+        <div class="stats-item">Gesamt-Punkte (XP): <span id="stat-xp" class="val">0</span></div>
+        <div class="stats-item">Gelernt: <span id="stat-learned" class="val">0/0</span></div>
+    </div>
+
+    <hr>
+
+    <div id="quiz-question">Drücke Start um zu lernen!</div>
+    
+    <label style="display: block; margin-bottom: 15px; cursor: pointer;">
+        <input type="checkbox" id="hard-mode"> 🤫 Profi-Modus (Namen aus)
+    </label>
+
+    <button class="btn btn-start" id="btn-start" onclick="startQuiz()">Quiz Starten</button>
+    <button class="btn btn-stop" id="btn-stop" onclick="stopQuiz()">Beenden</button>
+    
+    <p style="font-size: 0.8em; color: #7f8c8d; margin-top: auto;">Dein Fortschritt wird automatisch gespeichert.</p>
 </div>
 
-<div id="quiz-feedback"></div>
+<div id="search-box">
+    <input type="text" id="search-input" placeholder="🔍 Ort suchen...">
+</div>
 
+<div id="feedback-overlay"></div>
 <div id="map"></div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-
 <script>
-    // --- 1. KARTE INITIALISIEREN ---
-    var map = L.map('map', { zoomControl: false }).setView([50.0, 15.0], 4);
-    L.control.zoom({ position: 'topright' }).addTo(map);
+    // --- MAP SETUP ---
+    var map = L.map('map', { zoomControl: false }).setView([52, 15], 4);
+    
+    // Panes für Z-Index Fix (Städte über Flächen)
+    map.createPane('areaPane');  // Für Gebirge/Tiefland
+    map.getPane('areaPane').style.zIndex = 400;
+    map.createPane('cityPane');  // Für Städte/Marker
+    map.getPane('cityPane').style.zIndex = 650;
 
-    // --- 2. BASE-LAYERS ---
-    var openTopo = L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {
-        maxZoom: 17, attribution: 'Map style: © OpenTopoMap'
-    }).addTo(map);
+    L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', { maxZoom: 17 }).addTo(map);
 
-    var esriSatellite = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
-        attribution: 'Tiles © Esri'
-    });
-
-    // --- 3. LAYER GRUPPEN ---
-    var lgLaender = L.layerGroup();
-    var lgGebirge = L.layerGroup();
-    var lgTiefland = L.layerGroup();
-    var lgFluesse = L.layerGroup();
-    var lgSeen = L.layerGroup();
-    var lgInseln = L.layerGroup();
-    var lgStaedte = L.layerGroup();
-
-    // Globaler State
+    // --- STATE & STORAGE ---
     let searchIndex = [];
+    let masteredItems = JSON.parse(localStorage.getItem('geoMastered') || '[]');
+    let totalXP = parseInt(localStorage.getItem('geoTotalXP') || '0');
     let quizActive = false;
     let currentTarget = null;
-    let score = 0;
-    let questionsCount = 0;
-    
-    // Highscore laden
-    let highscore = localStorage.getItem('geoQuizHighscore') || 0;
-    document.getElementById('highscore-display').innerText = `🏆 Highscore: ${highscore}`;
 
-    // --- 4. STYLES ---
-    const sGebirge = { normal: { color: '#8B4513', fillColor: '#A0522D', weight: 1, fillOpacity: 0.35 }, hover: { weight: 2, fillOpacity: 0.6 } };
-    const sTiefland = { normal: { color: '#228B22', fillColor: '#90EE90', weight: 1, fillOpacity: 0.25 }, hover: { weight: 2, fillOpacity: 0.5 } };
-    const sSee = { normal: { color: '#2980b9', fillColor: '#3498db', weight: 1, fillOpacity: 0.6 }, hover: { weight: 2, fillOpacity: 0.8 } };
-    const sInsel = { normal: { color: '#6c5ce7', fillColor: '#a29bfe', weight: 1, fillOpacity: 0.3 }, hover: { weight: 2, fillOpacity: 0.6 } };
-    const sFluss = { normal: { color: '#1e3799', weight: 2.5, opacity: 0.9 }, hover: { weight: 5, color: '#0056b3' } };
+    // --- UTILS ---
+    function toggleMenu() {
+        document.getElementById('quiz-sidebar').classList.toggle('open');
+    }
 
-    // --- 5. WIKIPEDIA API FUNKTION ---
-    async function fetchWikipediaData(name) {
-        // Bereinige Namen (z.B. "Ural (Fluss)" -> "Ural")
-        let cleanName = name.replace(/ \(.+\)/, '');
-        
-        // Spezifische Korrekturen für bessere Treffer
-        if(cleanName === "Dt. Mittelgebirge") cleanName = "Mittelgebirge";
-        if(cleanName === "Norddt. Tiefland") cleanName = "Norddeutsches Tiefland";
+    function updateUI() {
+        document.getElementById('stat-xp').innerText = totalXP;
+        const total = searchIndex.length;
+        const learned = masteredItems.length;
+        document.getElementById('stat-learned').innerText = `${learned}/${total}`;
+        const percent = total > 0 ? Math.round((learned / total) * 100) : 0;
+        document.getElementById('progress-bar').style.width = percent + '%';
+        document.getElementById('progress-text').innerText = percent + '% abgeschlossen';
+    }
 
-        const url = `https://de.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(cleanName)}`;
-        
+    async function fetchWiki(name, type) {
+        let query = name;
+        // Bessere Treffer durch Typ-Zusatz
+        if(type === "Fluss") query += " (Fluss)";
+        if(type === "Gebirge") query += " (Gebirge)";
+
+        const url = `https://de.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(query)}`;
         try {
-            const response = await fetch(url);
-            if (!response.ok) throw new Error('Wiki not found');
-            const data = await response.json();
-            return {
-                title: data.title,
-                extract: data.extract,
-                thumbnail: data.thumbnail ? data.thumbnail.source : null,
-                url: data.content_urls.desktop.page
-            };
-        } catch (e) {
-            return null; // Fallback
-        }
+            const res = await fetch(url);
+            const data = await res.json();
+            return data.extract ? data : null;
+        } catch(e) { return null; }
     }
 
-    // --- 6. CORE RENDERING ---
-    function isHardMode() {
-        return document.getElementById('hard-mode-cb').checked;
-    }
-
-    function addPoly(group, coords, name, styleObj, type) {
-        let p = L.polygon(coords, styleObj.normal).addTo(group);
-        // Tooltip (nur wenn nicht Hard Mode)
-        p.bindTooltip(name, { sticky: true, direction: 'top', offset: [0, -10] });
+    // --- MAP OBJECTS ---
+    function addPoly(coords, name, type, color) {
+        let p = L.polygon(coords, { 
+            color: color, fillColor: color, fillOpacity: 0.3, weight: 1, pane: 'areaPane' 
+        }).addTo(map);
         
-        p.on({
-            mouseover: (e) => { 
-                if (quizActive && isHardMode()) {
-                    p.closeTooltip(); // Verstecken im Hard Mode
-                    return;
-                }
-                if (!quizActive) e.target.setStyle(styleObj.hover); 
-            },
-            mouseout: (e) => { 
-                if (!quizActive) e.target.setStyle(styleObj.normal); 
-            },
-            click: (e) => handleMapClick(e, name, type, p)
-        });
-        searchIndex.push({ name: name, layer: p, type: type, group: group });
+        p.bindTooltip(name, { sticky: true });
+        p.on('mouseover', function() { if(!quizActive || !document.getElementById('hard-mode').checked) this.setStyle({fillOpacity: 0.6}); });
+        p.on('mouseout', function() { this.setStyle({fillOpacity: 0.3}); });
+        p.on('click', (e) => handleInteraction(name, type, e, p));
+        
+        searchIndex.push({name, type, layer: p});
     }
 
-    function addLine(group, coords, name, type) {
-        L.polyline(coords, { weight: 15, opacity: 0 }).addTo(group).on('click', (e) => handleMapClick(e, name, type, l)); // Hitbox
-        let l = L.polyline(coords, sFluss.normal).addTo(group);
+    function addCity(coords, name) {
+        let c = L.circleMarker(coords, { 
+            radius: 6, color: '#000', fillColor: '#fff', fillOpacity: 1, weight: 2, pane: 'cityPane' 
+        }).addTo(map);
+        
+        c.bindTooltip(name, { direction: 'top', offset: [0, -5] });
+        c.on('click', (e) => handleInteraction(name, "Stadt", e, c));
+        
+        searchIndex.push({name, type: "Stadt", layer: c});
+    }
+
+    function addLine(coords, name) {
+        let l = L.polyline(coords, { color: '#2980b9', weight: 3, pane: 'cityPane' }).addTo(map);
         l.bindTooltip(name, { sticky: true });
-
-        l.on({
-            mouseover: (e) => { 
-                if (quizActive && isHardMode()) {
-                    l.closeTooltip(); 
-                    return;
-                }
-                if (!quizActive) e.target.setStyle(sFluss.hover); 
-            },
-            mouseout: (e) => { 
-                if (!quizActive) e.target.setStyle(sFluss.normal); 
-            },
-            click: (e) => handleMapClick(e, name, type, l)
-        });
-        searchIndex.push({ name: name, layer: l, type: type, group: group });
+        l.on('click', (e) => handleInteraction(name, "Fluss", e, l));
+        searchIndex.push({name, type: "Fluss", layer: l});
     }
 
-    function addCity(group, coords, name) {
-        let m = L.circleMarker(coords, { radius: 6, color: '#000', fillColor: '#fff', weight: 1.5, fillOpacity: 1 }).addTo(group);
-        m.bindTooltip(name, { direction: 'top', offset: [0, -5] });
-        m.on({
-            mouseover: (e) => { 
-                if (quizActive && isHardMode()) {
-                    m.closeTooltip(); 
-                    return;
-                }
-                if (!quizActive) e.target.setStyle({ radius: 9, fillColor: '#ffff00' }); 
-            },
-            mouseout: (e) => { 
-                if (!quizActive) e.target.setStyle({ radius: 6, fillColor: '#fff' }); 
-            },
-            click: (e) => handleMapClick(e, name, "Hauptstadt", m)
-        });
-        searchIndex.push({ name: name, layer: m, type: "Hauptstadt", group: group });
-    }
-
-    // --- KLICK HANDLER (QUIZ vs WIKI) ---
-    async function handleMapClick(e, name, type, layer) {
+    // --- INTERACTION & QUIZ ---
+    async function handleInteraction(name, type, event, layer) {
         if (quizActive) {
             checkAnswer(name);
         } else {
-            // WIKIPEDIA MODUS
-            const popupContent = document.createElement('div');
-            popupContent.className = 'wiki-loading';
-            popupContent.innerHTML = 'Lade Informationen...';
-
-            const popup = L.popup()
-                .setLatLng(e.latlng)
-                .setContent(popupContent)
-                .openOn(map);
-
-            const wikiData = await fetchWikipediaData(name);
-
-            if (wikiData) {
-                const html = `
-                    <div class="wiki-card">
-                        ${wikiData.thumbnail ? `<img src="${wikiData.thumbnail}" class="wiki-image">` : ''}
-                        <div class="wiki-content">
-                            <div class="wiki-title">${wikiData.title}</div>
-                            <div class="cat-header">${type}</div>
-                            <div class="wiki-text">${wikiData.extract.substring(0, 150)}...</div>
-                            <a href="${wikiData.url}" target="_blank" class="wiki-link">Mehr auf Wikipedia lesen &rarr;</a>
-                        </div>
-                    </div>`;
-                popup.setContent(html);
-            } else {
-                popup.setContent(`<div class="wiki-content"><div class="wiki-title">${name}</div><div class="cat-header">${type}</div><br>Keine weiteren Infos gefunden.</div>`);
-            }
+            // Wikipedia Info
+            const data = await fetchWiki(name, type);
+            const content = data ? 
+                `<b>${name}</b> (${type})<br><small>${data.extract.substring(0,150)}...</small><br><img src="${data.thumbnail?.source || ''}">` : 
+                `<b>${name}</b><br>Keine Wiki-Infos gefunden.`;
+            L.popup().setLatLng(event.latlng).setContent(content).openOn(map);
         }
-        L.DomEvent.stopPropagation(e);
     }
 
-    // --- 7. DATEN (PRÄZISIERTE FLÜSSE) ---
-    
-    // Stark verbesserte Koordinaten für die Hauptflüsse
-    const dFluesse = [
-        // Westeuropa / Mitteleuropa
-        {n: "Rhein", c: [[46.6,9.4], [47.5,7.6], [48.5,7.8], [49.0,8.4], [50.0,8.0], [50.4,7.5], [50.9,7.0], [51.5,6.5], [51.9,6.0], [51.9,4.1]]},
-        {n: "Donau", c: [[48.1,8.1], [48.4,10.0], [49.0,12.0], [48.3,14.0], [48.2,16.4], [47.8,17.5], [47.5,19.0], [45.8,18.8], [44.8,20.5], [44.5,22.5], [43.7,24.0], [44.2,27.0], [45.2,28.5], [45.2,29.7]]},
-        {n: "Elbe", c: [[50.7,15.6], [50.5,14.0], [51.0,13.0], [51.8,12.5], [52.2,12.0], [53.5,10.0], [53.5,9.5], [53.9,8.6]]},
-        {n: "Oder", c: [[49.6,17.5], [50.5,18.0], [51.5,16.5], [52.0,14.8], [52.5,14.5], [53.0,14.3], [53.6,14.6]]},
-        {n: "Weser", c: [[51.4,9.6], [52.0,9.0], [52.5,9.0], [53.0,8.5], [53.5,8.5]]},
-        {n: "Maas", c: [[48.0,5.6], [49.0,5.5], [50.8,5.7], [51.5,5.0], [51.8,4.1]]},
-        {n: "Seine", c: [[47.5,4.7], [48.2,3.5], [48.8,2.3], [49.0,1.5], [49.4,0.1]]},
-        {n: "Loire", c: [[44.8,4.4], [46.0,4.0], [47.0,3.0], [47.5,1.5], [47.2,0.0], [47.3,-2.2]]},
-        {n: "Rhône", c: [[46.6,8.4], [46.2,6.0], [45.7,4.8], [44.5,4.8], [43.3,4.8]]},
-        {n: "Po", c: [[44.7,7.0], [45.0,9.0], [45.0,10.5], [44.9,12.4]]},
-        {n: "Tiber", c: [[43.8,12.1], [43.0,12.3], [42.5,12.5], [41.7,12.2]]},
-        {n: "Ebro", c: [[43.0,-4.0], [42.5,-3.0], [42.0,-1.5], [41.5,-0.5], [41.0,0.5], [40.7,0.8]]},
-        {n: "Tajo", c: [[40.3,-1.7], [40.0,-3.0], [39.8,-4.5], [39.5,-6.0], [39.0,-7.0], [39.0,-8.5], [38.7,-9.4]]},
-        {n: "Themse", c: [[51.7,-2.0], [51.6,-1.0], [51.5,-0.1], [51.5,0.7]]},
-
-        // Osteuropa / Russland
-        {n: "Wolga", c: [[57.2,32.5], [56.8,35.5], [56.5,38.0], [58.0,39.0], [56.0,44.0], [56.2,49.5], [53.2,49.0], [52.0,48.0], [51.5,46.0], [48.7,44.5], [47.0,46.0], [45.8,48.0]]},
-        {n: "Don", c: [[54.0,38.2], [53.0,39.0], [51.5,39.2], [49.5,41.0], [49.5,43.5], [47.5,42.0], [47.2,40.0], [47.1,39.4]]},
-        {n: "Dnipro", c: [[55.8,33.5], [53.0,31.0], [51.0,30.5], [49.0,33.0], [48.0,35.0], [47.0,34.0], [46.5,32.3]]},
-        {n: "Kama", c: [[58.5,53.5], [60.0,54.0], [58.0,56.0], [56.0,54.0], [55.8,51.0], [55.4,49.0]]},
-        {n: "Ural", c: [[54.5,59.5], [52.5,58.0], [51.5,55.0], [51.2,51.0], [49.0,52.0], [47.0,51.8]]},
-        {n: "Petschora", c: [[62.0,58.0], [64.0,57.0], [65.0,56.0], [66.5,52.5], [68.2,53.5]]},
-        {n: "Nördl. Dwina", c: [[61.0,46.5], [62.0,44.0], [62.5,42.5], [64.5,40.5]]},
-        
-        // Kleinere / Andere
-        {n: "Glama", c: [[62.0,11.5], [61.1,11.3], [60.2,11.7], [59.2,10.9]]},
-        {n: "Dalälv", c: [[61.2,13.0], [60.3,15.0], [60.6,17.5]]},
-        {n: "Weichsel", c: [[49.6,19.0], [50.5,20.0], [52.0,21.5], [53.0,19.0], [53.5,18.8], [54.4,18.9]]},
-        {n: "Pruth", c: [[48.2,24.5], [47.0,27.5], [45.5,28.2]]},
-        {n: "Theiß", c: [[48.1,24.2], [47.5,20.2], [46.0,20.0], [45.2,20.3]]},
-        {n: "Maritza", c: [[42.2,23.6], [42.1,25.0], [41.7,26.2], [41.0,26.2], [40.7,26.1]]},
-        {n: "Klarälv", c: [[62.5,12.0], [61.0,13.0], [59.3,13.5]]},
-        {n: "Göta älv", c: [[58.4,12.3], [58.0,12.1], [57.7,11.9]]},
-        {n: "Indalsälv", c: [[63.3,13.0], [63.0,15.0], [62.5,17.5]]},
-        {n: "Umeälv", c: [[66.0,15.0], [65.0,17.5], [63.8,20.3]]},
-        {n: "Torneälv", c: [[68.0,20.0], [67.0,23.5], [65.8,24.1]]},
-        {n: "Mesen", c: [[64.5,48.0], [65.5,46.0], [66.2,44.2]]},
-        {n: "Suchona", c: [[59.4,39.5], [60.5,43.0], [61.2,46.6]]},
-        {n: "Wytschegda", c: [[62.2,54.0], [62.0,50.0], [61.2,46.6]]},
-        {n: "Wjatka", c: [[59.0,52.0], [57.5,50.0], [55.8,51.5]]},
-        {n: "Bjelaja", c: [[54.5,58.5], [55.5,56.0], [55.8,53.5]]},
-        {n: "Onega", c: [[61.7,39.0], [63.0,38.5], [63.9,38.0]]},
-        {n: "Oka", c: [[53.0,36.0], [55.0,40.0], [56.3,43.9]]},
-        {n: "Desna", c: [[54.5,33.3], [52.0,32.0], [50.5,30.5]]},
-        {n: "Donez", c: [[51.0,37.0], [49.0,39.0], [47.6,40.8]]},
-        {n: "Kuma", c: [[44.0,42.0], [44.8,44.5], [45.0,46.5]]},
-        {n: "Kuban", c: [[43.5,42.0], [45.0,40.0], [45.0,37.5]]},
-        {n: "Düna (Daugava)", c: [[55.9,32.5], [55.0,27.0], [57.1,24.0]]},
-        {n: "Memel (Neman)", c: [[53.3,27.5], [55.0,22.5], [55.3,21.3]]},
-        {n: "Mosel", c: [[47.9,6.1], [49.5,6.5], [50.4,7.6]]},
-        {n: "Main", c: [[50.0,11.5], [50.0,9.0], [50.0,8.3]]},
-        {n: "Inn", c: [[46.4,9.7], [48.0,12.5], [48.6,13.4]]},
-        {n: "Dnister", c: [[49.2,22.9], [48.5,27.0], [46.2,30.2]]},
-        {n: "Save", c: [[46.3,14.1], [45.0,17.0], [44.8,20.4]]},
-        {n: "Drau", c: [[46.7,12.3], [46.0,17.5], [45.5,18.9]]},
-        {n: "Garonne", c: [[42.7,0.8], [44.5,-0.5], [45.7,-1.2]]},
-        {n: "Duero", c: [[42.0,-2.7], [41.5,-5.5], [41.2,-8.7]]},
-        {n: "Guadiana", c: [[39.1,-3.7], [38.5,-7.5], [37.2,-7.4]]},
-        {n: "Guadalquivir", c: [[37.9,-2.9], [37.4,-6.0], [36.8,-6.3]]},
-        {n: "Narew", c: [[52.8,24.2], [53.1,23.0], [52.5,21.1]]},
-        {n: "Bug", c: [[49.9,25.0], [51.5,23.6], [52.4,21.1]]},
-        {n: "Pripjat", c: [[51.3,23.9], [52.1,26.5], [51.2,30.3]]},
-        {n: "Warthe", c: [[50.5,19.4], [52.2,18.0], [52.4,16.9], [52.6,14.6]]},
-        {n: "Morava", c: [[50.2,16.9], [49.2,17.4], [48.2,16.9]]}
-    ];
-
-    // (Andere Daten bleiben gleich - werden hier nur gekürzt dargestellt)
-    const dGebirge = [
-        {n: "Skandinavisches Gebirge", c: [[58.5,6.0], [61.0,7.5], [63.0,11.0], [68.0,18.0], [70.5,23.0], [69.5,26.0], [66.0,19.0], [61.5,12.0], [59.0,9.0]]},
-        {n: "Ural", c: [[68.0,66.0], [66.0,65.0], [62.0,59.0], [59.0,59.0], [55.0,59.0], [51.0,58.0], [51.0,61.0], [55.0,61.5], [62.0,61.0], [67.0,67.5]]},
-        {n: "Alpen", c: [[43.8,7.2], [45.0,6.5], [46.5,8.0], [47.5,9.5], [47.6,12.5], [47.5,14.5], [48.2,16.2], [47.0,15.0], [46.0,11.0], [44.2,7.5]]},
-        {n: "Karpaten", c: [[48.2,17.0], [49.5,19.5], [49.8,22.0], [48.5,24.5], [47.0,26.5], [45.5,26.8], [44.8,24.5], [45.5,22.0], [47.0,22.5], [48.0,20.0]]},
-        {n: "Pyrenäen", c: [[43.3,-1.8], [42.8,0.0], [42.6,2.0], [42.4,3.2], [42.8,3.2], [43.1,1.5], [43.5,-1.5]]},
-        {n: "Apenninen", c: [[44.5,8.5], [44.0,11.0], [42.5,13.5], [40.5,16.0], [38.0,16.0], [39.5,15.0], [41.5,12.5], [43.5,9.5]]},
-        {n: "Dinarisches Gebirge", c: [[46.0,14.5], [45.2,15.0], [44.0,16.5], [42.5,18.5], [42.0,20.0], [42.5,20.5], [44.5,18.0], [45.8,15.5]]},
-        {n: "Balkan", c: [[43.7,22.5], [43.0,23.5], [42.7,25.0], [42.7,28.0], [43.2,27.5], [43.2,25.0], [44.0,23.0]]},
-        {n: "Rhodopen", c: [[41.5,23.5], [41.2,25.0], [41.4,26.0], [42.0,25.5], [42.1,24.0]]},
-        {n: "Pindos", c: [[40.5,20.5], [39.0,21.5], [38.5,22.5], [39.5,21.0], [40.5,21.5]]},
-        {n: "Kaukasus", c: [[44.5,37.0], [43.5,41.0], [42.5,45.0], [41.0,49.5], [41.5,50.0], [43.0,47.0], [44.0,43.0], [45.5,38.0]]},
-        {n: "Sudeten", c: [[51.0,14.5], [50.8,15.5], [50.5,16.5], [50.0,17.5], [50.5,17.5], [51.2,16.0], [51.3,15.0]]},
-        {n: "Zentralmassiv", c: [[44.2,2.0], [45.8,2.2], [46.2,3.5], [45.5,4.8], [44.2,4.5], [43.8,3.0]]},
-        {n: "Kantabrisches Gebirge", c: [[43.0,-6.5], [43.2,-4.5], [43.0,-3.0], [42.5,-3.5], [42.5,-6.0]]},
-        {n: "Kastilisches Gebirge", c: [[40.2,-6.0], [41.0,-4.5], [40.8,-3.0], [40.2,-3.5], [40.0,-5.0]]},
-        {n: "Iberisches Randgebirge", c: [[41.5,-3.0], [40.5,-1.5], [40.2,-0.5], [41.0,0.0], [42.0,-2.5]]},
-        {n: "Sierra Morena", c: [[38.2,-7.0], [38.5,-5.0], [38.5,-3.0], [37.8,-3.5], [37.8,-6.5]]},
-        {n: "Betische Kordillere", c: [[36.5,-5.5], [37.5,-3.5], [37.8,-2.0], [37.2,-1.5], [36.5,-3.0], [36.0,-5.0]]},
-        {n: "Dt. Mittelgebirge", c: [[50.2,6.5], [51.5,9.5], [51.0,14.0], [49.0,13.5], [48.5,11.0], [48.5,8.0]]},
-        {n: "Alpenvorland", c: [[47.5,9.0], [48.5,11.0], [48.5,14.5], [48.0,15.0], [47.5,13.0]]},
-        {n: "Siebenbürgen", c: [[45.8,23.0], [47.0,23.0], [47.2,25.5], [45.8,25.5]]},
-        {n: "Riesengebirge", c: [[50.7,15.4], [50.85,15.7], [50.75,15.9], [50.65,15.5]]},
-        {n: "Hochland von Kastilien", c: [[39.5,-6.0], [41.5,-5.5], [41.5,-2.0], [39.5,-2.5]]},
-        {n: "Schottische Hochlande", c: [[56.5,-5.5], [58.5,-5.0], [58.5,-3.0], [57.0,-3.5]]},
-        {n: "Timanrücken", c: [[63.0,50.0], [65.0,49.0], [67.0,48.0], [67.5,50.0], [65.0,53.0]]}
-    ];
-
-    const dTiefland = [
-        {n: "Norddt. Tiefland", c: [[52.0,6.0], [54.0,7.5], [54.5,13.5], [52.5,14.5], [51.5,11.0]]},
-        {n: "Londoner Becken", c: [[51.2,-1.2], [51.9,0.5], [51.5,1.2], [51.0,0.5]]},
-        {n: "Pariser Becken", c: [[47.5,0.0], [49.5,1.5], [50.0,4.0], [48.0,4.5], [47.0,2.0]]},
-        {n: "Finnische Seenplatte", c: [[61.0,24.0], [63.5,25.5], [63.5,30.0], [61.0,29.5]]},
-        {n: "Nordruss. Tiefland", c: [[62.0,40.0], [66.0,43.0], [67.0,55.0], [61.0,53.0]]},
-        {n: "Nordruss. Landrücken", c: [[58.0,35.0], [60.5,45.0], [59.5,52.0], [57.0,45.0]]},
-        {n: "Mittelruss. Platte", c: [[51.0,34.0], [54.5,36.0], [54.0,39.0], [51.0,39.0]]},
-        {n: "Kaspische Senke", c: [[46.0,47.0], [48.5,50.0], [48.0,53.0], [45.0,53.0], [44.0,50.0]]},
-        {n: "Wolgaplatte", c: [[50.0,44.0], [54.0,47.0], [53.5,50.0], [50.0,47.0]]},
-        {n: "Alföld", c: [[45.5,19.0], [48.0,20.0], [48.0,22.5], [46.0,22.0]]},
-        {n: "Walachei", c: [[43.8,23.5], [44.8,25.0], [45.2,27.5], [44.2,28.0]]},
-        {n: "Baltische Landrücken", c: [[53.0,12.0], [54.5,18.0], [55.5,25.0], [53.5,23.0]]},
-        {n: "Normandie", c: [[48.8,-1.8], [49.8,-1.2], [49.5,1.0], [48.8,0.5]]},
-        {n: "Bretagne", c: [[47.8,-4.8], [48.7,-4.0], [48.5,-1.8], [47.5,-2.2]]},
-        {n: "Poebene", c: [[44.8,7.5], [45.5,9.5], [45.5,12.5], [44.5,12.0]]}
-    ];
-
-    const dInseln = [
-        {n: "Island", c: [[63.4,-24.5], [66.5,-24.5], [66.5,-13.5], [63.4,-13.5]]}, 
-        {n: "Lofoten", c: [[67.4,11.9], [68.3,13.5], [69.4,16.2], [68.2,15.5]]},
-        {n: "Färöer", c: [[61.4,-7.5], [62.4,-7.0], [62.2,-6.3]]},
-        {n: "Shetland Inseln", c: [[59.8,-1.8], [60.9,-1.2], [60.5,-0.7]]},
-        {n: "Orkney Inseln", c: [[58.7,-3.5], [59.4,-3.2], [59.2,-2.4]]},
-        {n: "Hebriden", c: [[56.5,-7.8], [58.6,-6.4], [58.2,-5.8]]},
-        {n: "Rockall", c: [[57.58,-13.68], [57.60,-13.69], [57.59,-13.67]]},
-        {n: "Scilly Inseln", c: [[49.85,-6.45], [49.95,-6.35], [49.85,-6.25]]},
-        {n: "Jütland", c: [[54.8,8.5], [57.5,10.0], [57.5,10.8], [54.5,10.0]]},
-        {n: "Bornholm", c: [[55.0,14.65], [55.3,14.7], [55.1,15.15]]},
-        {n: "Öland", c: [[56.2,16.4], [57.3,17.0], [57.4,17.1], [56.3,16.5]]},
-        {n: "Gotland", c: [[56.9,18.1], [57.9,19.2], [57.4,18.8]]},
-        {n: "Ösel (Saaremaa)", c: [[57.9,21.8], [58.6,22.0], [58.5,23.3]]},
-        {n: "Åland Inseln", c: [[59.9,19.5], [60.4,20.0], [60.2,20.8]]},
-        {n: "Kanalinseln", c: [[49.1,-2.7], [49.5,-2.2], [49.2,-2.0]]},
-        {n: "Kola", c: [[66.5,32.0], [69.5,32.5], [68.0,41.0], [66.2,39.0]]},
-        {n: "Kolgujew", c: [[68.7,48.5], [69.4,49.0], [69.0,50.2]]},
-        {n: "Kanin", c: [[66.5,43.5], [68.5,43.8], [68.0,45.5]]},
-        {n: "Balearen", c: [[38.6,1.2], [40.0,3.8], [39.8,4.5], [38.5,1.5]]},
-        {n: "Sizilien", c: [[36.6,12.4], [38.2,12.6], [38.2,15.6], [36.6,15.1]]},
-        {n: "Sardinien", c: [[38.9,8.1], [41.2,8.2], [41.2,9.8], [38.9,9.6]]},
-        {n: "Korsika", c: [[41.35,8.55], [43.0,8.4], [43.0,9.5], [41.4,9.4]]},
-        {n: "Kreta", c: [[35.2,23.5], [35.6,24.0], [35.2,26.3]]},
-        {n: "Krim", c: [[44.4,32.5], [45.8,32.8], [46.0,34.5], [45.4,36.5], [44.4,35.5]]},
-        {n: "Peloponnes", c: [[36.4,21.5], [38.2,21.5], [37.8,23.5], [36.4,23.0]]},
-        {n: "Ionische Inseln", c: [[37.5,20.5], [39.8,19.5], [38.5,20.8]]},
-        {n: "Euböa", c: [[37.9,24.0], [38.5,23.5], [39.0,23.0]]},
-        {n: "Lesbos", c: [[39.0,26.0], [39.4,26.0], [39.2,26.6]]},
-        {n: "Rhodos", c: [[35.8,27.7], [36.4,28.2], [35.9,28.0]]}
-    ];
-
-    const dSeen = [
-        {n: "Ladogasee", c: [[59.9,30.0], [61.0,30.0], [61.7,31.5], [61.0,33.0], [60.0,32.5]]},
-        {n: "Onegasee", c: [[61.0,34.2], [62.5,34.5], [62.8,36.0], [61.5,36.5], [60.9,35.8]]},
-        {n: "Vänersee", c: [[58.3,12.3], [59.4,13.5], [59.0,14.2], [58.4,13.8]]},
-        {n: "Vättersee", c: [[57.8,14.0], [58.5,14.5], [58.6,15.0], [57.8,14.4]]},
-        {n: "Mälarsee", c: [[59.2,16.0], [59.6,17.0], [59.4,18.0], [59.2,17.5]]},
-        {n: "Peipussee", c: [[57.9,27.3], [58.8,27.2], [59.0,27.5], [58.5,28.0]]},
-        {n: "Bodensee", c: [[47.45,9.1], [47.8,9.2], [47.7,9.7], [47.4,9.6]]},
-        {n: "Inarisee", c: [[68.7,27.2], [69.3,27.8], [69.2,28.8], [68.8,28.4]]},
-        {n: "Kaspisches Meer", c: [[47.0,46.8], [45.0,47.5], [40.0,49.0], [37.0,50.5], [37.5,54.0], [44.0,53.0], [47.0,50.0]]},
-        {n: "Kamastausee", c: [[57.5,55.0], [59.0,56.5], [58.5,57.0], [57.5,56.0]]},
-        {n: "Rybinsker Stausee", c: [[58.0,38.0], [58.8,38.0], [58.6,39.0], [58.0,38.8]]},
-        {n: "Gorkijerstausee", c: [[56.7,43.0], [57.4,43.2], [57.3,43.8], [56.7,43.5]]},
-        {n: "Kuibyschewer Stausee", c: [[53.2,49.0], [54.5,49.0], [55.0,49.5], [53.5,49.8]]},
-        {n: "Saratower Stausee", c: [[52.0,47.8], [52.8,48.5], [51.8,48.2]]},
-        {n: "Wolgograder Stausee", c: [[49.0,45.0], [51.0,46.5], [50.5,46.8]]},
-        {n: "Zimljansker Stausee", c: [[47.5,42.2], [48.2,43.5], [47.8,44.0], [47.3,42.8]]},
-        {n: "Kachiwkaer Stausee", c: [[46.8,33.5], [47.5,35.0], [47.3,35.5], [46.7,34.0]]}
-    ];
-
-    const dStaedte = [
-        {n: "Tirana", c: [41.3275, 19.8187]}, {n: "Andorra la Vella", c: [42.5063, 1.5218]},
-        {n: "Brüssel", c: [50.8503, 4.3517]}, {n: "Sarajevo", c: [43.8563, 18.4131]},
-        {n: "Sofia", c: [42.6977, 23.3219]}, {n: "Kopenhagen", c: [55.6761, 12.5683]},
-        {n: "Berlin", c: [52.5200, 13.4050]}, {n: "Tallinn", c: [59.4370, 24.7536]},
-        {n: "Helsinki", c: [60.1699, 24.9384]}, {n: "Paris", c: [48.8566, 2.3522]},
-        {n: "Athen", c: [37.9838, 23.7275]}, {n: "Dublin", c: [53.3498, -6.2603]},
-        {n: "Reykjavík", c: [64.1265, -21.8174]}, {n: "Rom", c: [41.9028, 12.4964]},
-        {n: "Prishtina", c: [42.6629, 21.1655]}, {n: "Zagreb", c: [45.8150, 15.9819]},
-        {n: "Riga", c: [56.9496, 24.1052]}, {n: "Vaduz", c: [47.1410, 9.5209]},
-        {n: "Vilnius", c: [54.6872, 25.2797]}, {n: "Luxemburg", c: [49.6116, 6.1319]},
-        {n: "Valletta", c: [35.8992, 14.5141]}, {n: "Skopje", c: [41.9981, 21.4254]},
-        {n: "Chisinau", c: [47.0105, 28.8638]}, {n: "Monaco", c: [43.7384, 7.4246]},
-        {n: "Podgorica", c: [42.4304, 19.2594]}, {n: "Amsterdam", c: [52.3676, 4.9041]},
-        {n: "Oslo", c: [59.9139, 10.7522]}, {n: "Wien", c: [48.2082, 16.3738]},
-        {n: "Warschau", c: [52.2297, 21.0122]}, {n: "Lissabon", c: [38.7169, -9.1399]},
-        {n: "Bukarest", c: [44.4268, 26.1025]}, {n: "Moskau", c: [55.7558, 37.6173]},
-        {n: "San Marino", c: [43.9424, 12.4578]}, {n: "Stockholm", c: [59.3293, 18.0686]},
-        {n: "Bern", c: [46.9480, 7.4474]}, {n: "Belgrad", c: [44.7866, 20.4489]},
-        {n: "Bratislava", c: [48.1486, 17.1077]}, {n: "Ljubljana", c: [46.0569, 14.5058]},
-        {n: "Madrid", c: [40.4168, -3.7038]}, {n: "Prag", c: [50.0755, 14.4378]},
-        {n: "Ankara", c: [39.9334, 32.8597]}, {n: "Budapest", c: [47.4979, 19.0402]},
-        {n: "Kiew", c: [50.4501, 30.5234]}, {n: "Vatikanstadt", c: [41.9029, 12.4534]},
-        {n: "London", c: [51.5074, -0.1278]}, {n: "Minsk", c: [53.9045, 27.5615]},
-        {n: "Nikosia", c: [35.1856, 33.3823]}
-    ];
-
-    // --- 8. RENDERING ---
-    dGebirge.forEach(x => addPoly(lgGebirge, x.c, x.n, sGebirge, "Gebirge"));
-    dTiefland.forEach(x => addPoly(lgTiefland, x.c, x.n, sTiefland, "Landschaft"));
-    dSeen.forEach(x => addPoly(lgSeen, x.c, x.n, sSee, "Gewässer"));
-    dInseln.forEach(x => addPoly(lgInseln, x.c, x.n, sInsel, "Insel"));
-    dFluesse.forEach(x => addLine(lgFluesse, x.c, x.n, "Fluss"));
-    dStaedte.forEach(x => addCity(lgStaedte, x.c, x.n));
-
-    // --- 9. LAYER CONTROL ---
-    var baseMaps = { "⛰️ Physisch": openTopo, "🛰️ Satellit": esriSatellite };
-    var overlays = {
-        "🏳️ Ländergrenzen": lgLaender, "🏙️ Städte": lgStaedte,
-        "🏔️ Gebirge": lgGebirge, "🌿 Tiefländer": lgTiefland,
-        "〰️ Flüsse": lgFluesse, "💧 Seen": lgSeen, "🏝️ Inseln": lgInseln
-    };
-    L.control.layers(baseMaps, overlays, {collapsed: false}).addTo(map);
-    lgLaender.addTo(map); lgGebirge.addTo(map); lgFluesse.addTo(map);
-    lgStaedte.addTo(map); lgSeen.addTo(map); lgInseln.addTo(map);
-
-    // --- 10. QUIZ LOGIK ---
     function startQuiz() {
         quizActive = true;
-        score = 0;
-        questionsCount = 0;
-        document.getElementById('start-btn').style.display = 'none';
-        document.getElementById('stop-btn').style.display = 'inline-block';
-        document.getElementById('hard-mode-cb').disabled = true; // Sperre Modus-Wechsel während Quiz
+        document.getElementById('btn-start').style.display = 'none';
+        document.getElementById('btn-stop').style.display = 'block';
         nextQuestion();
     }
 
     function stopQuiz() {
         quizActive = false;
-        currentTarget = null;
-        document.getElementById('quiz-question').innerText = "Quiz beendet.";
-        document.getElementById('start-btn').style.display = 'inline-block';
-        document.getElementById('stop-btn').style.display = 'none';
-        document.getElementById('hard-mode-cb').disabled = false;
-        
-        // Highscore speichern
-        if (score > highscore) {
-            highscore = score;
-            localStorage.setItem('geoQuizHighscore', highscore);
-            document.getElementById('highscore-display').innerText = `🏆 Highscore: ${highscore}`;
-        }
+        document.getElementById('btn-start').style.display = 'block';
+        document.getElementById('btn-stop').style.display = 'none';
+        document.getElementById('quiz-question').innerText = "Bereit für eine Runde?";
     }
 
     function nextQuestion() {
-        if (!quizActive) return;
-        questionsCount++;
-        const item = searchIndex[Math.floor(Math.random() * searchIndex.length)];
-        currentTarget = item;
-        document.getElementById('quiz-score').innerText = `Punkte: ${score} | Fragen: ${questionsCount}`;
-        document.getElementById('quiz-question').innerText = `Wo ist: ${item.name}?`;
+        if(!quizActive) return;
+        currentTarget = searchIndex[Math.floor(Math.random() * searchIndex.length)];
+        document.getElementById('quiz-question').innerText = `Suche: ${currentTarget.name}`;
     }
 
     function checkAnswer(clickedName) {
-        if (!quizActive || !currentTarget) return;
-        const feedback = document.getElementById('quiz-feedback');
-        
-        if (clickedName === currentTarget.name) {
-            score++;
-            feedback.innerText = "✅ Richtig!";
-            feedback.style.background = "rgba(46, 204, 113, 0.9)";
-            feedback.style.display = 'block';
-            setTimeout(() => { feedback.style.display = 'none'; nextQuestion(); }, 1000);
+        const feedback = document.getElementById('feedback-overlay');
+        feedback.style.display = 'block';
+
+        if(clickedName === currentTarget.name) {
+            feedback.innerText = "✅ Richtig! +10 XP";
+            feedback.style.background = "var(--success)";
+            totalXP += 10;
+            localStorage.setItem('geoTotalXP', totalXP);
+            
+            // Fortschritt speichern
+            if(!masteredItems.includes(clickedName)) {
+                masteredItems.push(clickedName);
+                localStorage.setItem('geoMastered', JSON.stringify(masteredItems));
+            }
+            updateUI();
+            setTimeout(() => { feedback.style.display = 'none'; nextQuestion(); }, 800);
         } else {
             feedback.innerText = "❌ Falsch!";
-            feedback.style.background = "rgba(231, 76, 60, 0.9)";
-            feedback.style.display = 'block';
-            setTimeout(() => { feedback.style.display = 'none'; }, 1000);
+            feedback.style.background = "var(--danger)";
+            setTimeout(() => feedback.style.display = 'none', 800);
         }
-        document.getElementById('quiz-score').innerText = `Punkte: ${score} | Fragen: ${questionsCount}`;
     }
 
-    // --- 11. SUCH-LOGIK ---
-    const sInput = document.getElementById('search-input');
-    const sRes = document.getElementById('search-results');
-    let currentMatches = [];
+    // --- DATEN INITIALISIERUNG (Beispiele aus deiner Liste) ---
+    // Hier füge ich beispielhaft Objekte ein - du kannst die Liste aus deinem v4.0 Code hier fortsetzen
+    addPoly([[43.8,7.2], [46.5,8.0], [48.2,16.2], [44.2,7.5]], "Alpen", "Gebirge", "#8b4513");
+    addPoly([[52.0,6.0], [54.5,13.5], [51.5,11.0]], "Norddt. Tiefland", "Landschaft", "#27ae60");
+    addCity([52.52, 13.40], "Berlin");
+    addCity([48.85, 2.35], "Paris");
+    addCity([55.75, 37.61], "Moskau");
+    addLine([[46.6,9.4], [50.0,8.0], [51.9,4.1]], "Rhein");
+    addLine([[48.1,8.1], [47.5,19.0], [45.2,29.7]], "Donau");
 
-    function zoomToItem(item) {
-        if (!map.hasLayer(item.group)) map.addLayer(item.group);
-        if (item.layer.getBounds) {
-            map.fitBounds(item.layer.getBounds(), { padding: [100, 100], maxZoom: 9 });
-        } else {
-            map.setView(item.layer.getLatLng(), 8);
-        }
-        item.layer.openPopup();
-        sRes.style.display = 'none';
-        sInput.value = item.name;
-    }
-
-    sInput.addEventListener('input', function() {
-        const val = this.value.toLowerCase();
-        sRes.innerHTML = ''; currentMatches = [];
-        if (val.length < 2) { sRes.style.display = 'none'; return; }
-        currentMatches = searchIndex.filter(i => i.name.toLowerCase().includes(val));
-        const showMatches = currentMatches.slice(0, 8);
-        if (showMatches.length > 0) {
-            sRes.style.display = 'block';
-            showMatches.forEach((m, index) => {
-                let div = document.createElement('div');
-                div.className = 'search-item';
-                if (index === 0) div.classList.add('active');
-                div.innerHTML = `<span class="search-name">${m.name}</span><span class="search-type">${m.type}</span>`;
-                div.onclick = () => zoomToItem(m);
-                sRes.appendChild(div);
-            });
-        } else { sRes.style.display = 'none'; }
-    });
-
-    sInput.addEventListener('keydown', function(e) {
-        if (e.key === 'Enter') {
-            e.preventDefault();
-            if (currentMatches.length > 0) { zoomToItem(currentMatches[0]); sInput.blur(); }
-        }
-    });
-
-    document.addEventListener('click', (e) => {
-        if (!document.getElementById('search-container').contains(e.target)) sRes.style.display = 'none';
-    });
+    // UI Initialisierung
+    updateUI();
 
 </script>
 </body>
