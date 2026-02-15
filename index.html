@@ -2,99 +2,97 @@
 <html lang="de">
 <head>
     <meta charset="UTF-8">
-    <title>Geo-Master Europa 6.0</title>
+    <title>Geo-Master Europa 7.0 - Komplettversion</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
         :root {
-            --primary: #2c3e50;
-            --accent: #3498db;
-            --success: #27ae60;
-            --danger: #e74c3c;
-            --light: #f8f9fa;
+            --primary: #2c3e50; --accent: #3498db; --success: #27ae60;
+            --danger: #e74c3c; --light: #f8f9fa;
         }
 
-        body, html { height: 100%; margin: 0; font-family: 'Segoe UI', Tahoma, sans-serif; overflow: hidden; }
-        #map { height: 100vh; width: 100%; background: #aad3df; z-index: 1; }
+        body, html { height: 100%; margin: 0; font-family: 'Segoe UI', sans-serif; overflow: hidden; }
+        #map { height: 100vh; width: 100%; background: #aad3df; }
 
-        /* --- SIDEBAR MENU --- */
+        /* --- SIDEBAR --- */
         #quiz-sidebar {
             position: absolute; top: 0; left: -350px; width: 320px; height: 100%;
-            background: white; z-index: 2000; transition: 0.4s cubic-bezier(0.05, 0.74, 0.2, 0.99);
-            box-shadow: 5px 0 25px rgba(0,0,0,0.3); padding: 25px;
+            background: white; z-index: 2000; transition: 0.4s ease;
+            box-shadow: 5px 0 25px rgba(0,0,0,0.3); padding: 20px;
             display: flex; flex-direction: column;
         }
         #quiz-sidebar.open { left: 0; }
-        
+        .close-sidebar { 
+            position: absolute; top: 10px; right: 10px; background: none; 
+            border: none; font-size: 20px; cursor: pointer; color: #999; 
+        }
+
         #menu-toggle {
             position: absolute; bottom: 30px; left: 20px; z-index: 1500;
             background: var(--primary); color: white; border: none; padding: 15px 25px;
-            border-radius: 50px; cursor: pointer; font-weight: bold; font-size: 1.1em;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.4); transition: transform 0.2s;
+            border-radius: 50px; cursor: pointer; font-weight: bold;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.4);
         }
-        #menu-toggle:hover { transform: scale(1.05); background: #34495e; }
 
-        /* --- PROGRESS & XP --- */
-        .progress-container { margin: 15px 0; background: #dfe6e9; border-radius: 12px; height: 24px; overflow: hidden; position: relative; border: 1px solid #bdc3c7; }
-        #progress-bar { height: 100%; background: linear-gradient(90deg, #2ecc71, #27ae60); width: 0%; transition: width 0.8s ease; }
-        #progress-text { position: absolute; width: 100%; text-align: center; font-size: 0.85rem; line-height: 24px; color: #2d3436; font-weight: bold; }
-
-        .stats-box { background: var(--light); padding: 15px; border-radius: 12px; margin-bottom: 20px; border: 1px solid #e0e0e0; }
-        .stats-item { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 0.95em; }
-        .val { font-weight: 800; color: var(--accent); }
-
-        /* --- QUIZ CONTROLS --- */
-        #quiz-question { font-size: 1.3em; color: var(--danger); font-weight: bold; margin: 25px 0; text-align: center; min-height: 60px; line-height: 1.2; }
-        .btn {
-            width: 100%; padding: 14px; border: none; border-radius: 10px; cursor: pointer;
-            font-weight: bold; font-size: 1em; margin-bottom: 12px; transition: 0.2s;
+        /* --- SEARCH --- */
+        #search-box {
+            position: absolute; top: 20px; left: 20px; z-index: 1000; width: 250px;
         }
-        .btn-start { background: var(--accent); color: white; box-shadow: 0 4px #2980b9; }
-        .btn-start:active { transform: translateY(2px); box-shadow: 0 2px #2980b9; }
+        #search-input {
+            width: 100%; padding: 12px 20px; border-radius: 25px; border: none;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.2); outline: none;
+        }
+
+        /* --- PROGRESS --- */
+        .progress-container { margin: 15px 0; background: #eee; border-radius: 12px; height: 20px; overflow: hidden; position: relative; }
+        #progress-bar { height: 100%; background: var(--success); width: 0%; transition: 0.5s; }
+        #progress-text { position: absolute; width: 100%; text-align: center; font-size: 0.75rem; line-height: 20px; font-weight: bold; }
+
+        .btn { width: 100%; padding: 12px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; margin-bottom: 10px; }
+        .btn-start { background: var(--accent); color: white; }
         .btn-stop { background: var(--danger); color: white; display: none; }
-        
-        #feedback-overlay {
-            position: absolute; top: 15%; left: 50%; transform: translate(-50%, -50%);
-            z-index: 3000; padding: 20px 50px; border-radius: 60px; color: white;
-            font-weight: bold; font-size: 2.5em; display: none; pointer-events: none;
-            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
-        }
 
-        /* Wiki Popup */
-        .wiki-card { width: 260px; }
-        .wiki-card img { width: 100%; border-radius: 8px; margin-top: 8px; border: 1px solid #eee; }
-        .wiki-extract { font-size: 0.9em; color: #444; margin-top: 8px; line-height: 1.4; }
+        #feedback-overlay {
+            position: absolute; top: 20%; left: 50%; transform: translate(-50%, -50%);
+            z-index: 3000; padding: 20px 40px; border-radius: 50px; color: white;
+            font-weight: bold; font-size: 2em; display: none; pointer-events: none;
+        }
+        
+        .wiki-card img { width: 100%; border-radius: 5px; margin-top: 10px; }
     </style>
 </head>
 <body>
 
-<button id="menu-toggle" onclick="toggleMenu()">🗺️ Quiz & Fortschritt</button>
+<div id="search-box">
+    <input type="text" id="search-input" placeholder="🔍 Ort suchen..." oninput="doSearch(this.value)">
+</div>
+
+<button id="menu-toggle" onclick="toggleMenu()">☰ Quiz & Fortschritt</button>
 
 <div id="quiz-sidebar">
-    <h2 style="margin-top: 0; color: var(--primary);">🌍 Geografie-Lernstand</h2>
+    <button class="close-sidebar" onclick="toggleMenu()">×</button>
+    <h2>🎓 Lern-Zentrale</h2>
     
-    <div class="stats-box">
-        <div class="stats-item">Gesamt-Erfahrung (XP): <span id="stat-xp" class="val">0</span></div>
-        <div class="stats-item">Objekte gemeistert: <span id="stat-learned" class="val">0 / 0</span></div>
-    </div>
-
     <div class="progress-container">
         <div id="progress-bar"></div>
-        <div id="progress-text">0% Wissen</div>
+        <div id="progress-text">0% Meisterung</div>
     </div>
 
-    <hr style="border: 0; border-top: 1px solid #eee; margin: 10px 0;">
+    <p>XP: <span id="stat-xp" style="font-weight:bold; color:var(--accent)">0</span></p>
 
-    <div id="quiz-question">Bereit, dein Wissen zu testen?</div>
+    <div id="quiz-question" style="font-size: 1.2em; color: var(--danger); font-weight: bold; margin: 20px 0; min-height: 50px;">
+        Klicke Start für das Quiz!
+    </div>
     
-    <label style="display: flex; align-items: center; gap: 10px; margin-bottom: 20px; cursor: pointer; font-size: 0.95em;">
-        <input type="checkbox" id="hard-mode" style="width: 18px; height: 18px;"> 🤫 Profi-Modus (Namen beim Hovern aus)
+    <label style="display:block; margin-bottom: 10px;">
+        <input type="checkbox" id="no-duplicates"> 🚫 Keine Dopplungen (einmal pro Runde)
+    </label>
+    <label style="display:block; margin-bottom: 20px;">
+        <input type="checkbox" id="hard-mode"> 🤫 Profi-Modus (Namen aus)
     </label>
 
-    <button class="btn btn-start" id="btn-start" onclick="startQuiz()">Quiz-Runde starten</button>
-    <button class="btn btn-stop" id="btn-stop" onclick="stopQuiz()">Quiz beenden</button>
-    
-    <p style="font-size: 0.8em; color: #95a5a6; margin-top: auto; text-align: center;">Dein Lernfortschritt wird automatisch im Browser gespeichert.</p>
+    <button class="btn btn-start" id="btn-start" onclick="startQuiz()">Quiz starten</button>
+    <button class="btn btn-stop" id="btn-stop" onclick="stopQuiz()">Beenden</button>
 </div>
 
 <div id="feedback-overlay"></div>
@@ -102,94 +100,68 @@
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
-    // --- MAP SETUP ---
+    // --- MAP INITIALISIERUNG ---
     var map = L.map('map', { zoomControl: false }).setView([50, 15], 4);
-    L.control.zoom({ position: 'topright' }).addTo(map);
+    
+    // Panes für Klickbarkeit (Städte über Flächen)
+    map.createPane('areaPane').style.zIndex = 400;
+    map.createPane('topPane').style.zIndex = 650;
 
-    // --- Z-INDEX FIX (PANES) ---
-    // Pane für Flächen (unten)
-    map.createPane('areaPane');
-    map.getPane('areaPane').style.zIndex = 400;
-    // Pane für Linien und Marker (oben)
-    map.createPane('topPane');
-    map.getPane('topPane').style.zIndex = 650;
+    var topo = L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', { maxZoom: 17 }).addTo(map);
+    var satellite = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}');
 
-    L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', { maxZoom: 17 }).addTo(map);
+    // Layer Gruppen 
+    var lgGebirge = L.layerGroup().addTo(map);
+    var lgFluesse = L.layerGroup().addTo(map);
+    var lgSeen = L.layerGroup().addTo(map);
+    var lgInseln = L.layerGroup().addTo(map);
+    var lgStaedte = L.layerGroup().addTo(map);
 
-    // --- DATEN & SPEICHERUNG ---
+    L.control.layers({ "🏔️ Topografie": topo, "🛰️ Satellit": satellite }, 
+                     { "🏔️ Gebirge": lgGebirge, "〰️ Flüsse": lgFluesse, "💧 Seen": lgSeen, "🏝️ Inseln": lgInseln, "🏙️ Städte": lgStaedte },
+                     { collapsed: false, position: 'topright' }).addTo(map);
+
+    // --- LOGIK & SPEICHER ---
     let searchIndex = [];
-    let masteredItems = JSON.parse(localStorage.getItem('geoMastered_v6') || '[]');
-    let totalXP = parseInt(localStorage.getItem('geoTotalXP_v6') || '0');
+    let sessionPool = []; // Für "Keine Dopplungen"
+    let masteredItems = JSON.parse(localStorage.getItem('geoMastered_v7') || '[]');
+    let totalXP = parseInt(localStorage.getItem('geoTotalXP_v7') || '0');
     let quizActive = false;
     let currentTarget = null;
 
     function toggleMenu() { document.getElementById('quiz-sidebar').classList.toggle('open'); }
 
-    function updateUI() {
-        document.getElementById('stat-xp').innerText = totalXP.toLocaleString();
-        const total = searchIndex.length;
-        const learned = masteredItems.length;
-        document.getElementById('stat-learned').innerText = `${learned} / ${total}`;
-        const percent = total > 0 ? Math.round((learned / total) * 100) : 0;
-        document.getElementById('progress-bar').style.width = percent + '%';
-        document.getElementById('progress-text').innerText = percent + '% abgeschlossen';
-    }
-
-    // --- WIKIPEDIA LOGIK ---
+    // Wikipedia Funktion für ALLE Kategorien 
     async function fetchWiki(name, type) {
-        let query = name;
-        if(type === "Fluss") query += " (Fluss)";
-        if(type === "Gebirge") query += " (Gebirge)";
-        
-        const url = `https://de.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(query)}`;
+        let q = name;
+        if(type === "Fluss") q += " (Fluss)";
+        if(type === "Gebirge") q += " (Gebirge)";
         try {
-            const res = await fetch(url);
-            if(!res.ok) return null;
-            return await res.json();
+            const res = await fetch(`https://de.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(q)}`);
+            return res.ok ? await res.json() : null;
         } catch(e) { return null; }
     }
 
     // --- RENDER FUNKTIONEN ---
-    function addPoly(coords, name, type, color) {
-        let p = L.polygon(coords, { 
-            color: color, fillColor: color, fillOpacity: 0.3, weight: 1.5, pane: 'areaPane' 
-        }).addTo(map);
-        
+    function addPoly(group, coords, name, type, color) {
+        let p = L.polygon(coords, { color: color, fillColor: color, fillOpacity: 0.3, weight: 1.5, pane: 'areaPane' }).addTo(group);
         p.bindTooltip(name, { sticky: true });
-        p.on('mouseover', function() { 
-            if(!quizActive || !document.getElementById('hard-mode').checked) {
-                this.setStyle({fillOpacity: 0.6, weight: 2.5});
-            } else { this.closeTooltip(); }
-        });
-        p.on('mouseout', function() { this.setStyle({fillOpacity: 0.3, weight: 1.5}); });
         p.on('click', (e) => handleInteraction(name, type, e, p));
-        
         searchIndex.push({name, type, layer: p});
     }
 
-    function addCity(coords, name) {
-        let c = L.circleMarker(coords, { 
-            radius: 6, color: '#000', fillColor: '#fff', fillOpacity: 1, weight: 2, pane: 'topPane' 
-        }).addTo(map);
-        
-        c.bindTooltip(name, { direction: 'top', offset: [0, -8] });
-        c.on('mouseover', function() { 
-            if(quizActive && document.getElementById('hard-mode').checked) this.closeTooltip(); 
-        });
-        c.on('click', (e) => handleInteraction(name, "Stadt", e, c));
-        searchIndex.push({name, type: "Stadt", layer: c});
-    }
-
-    function addLine(coords, name) {
-        let l = L.polyline(coords, { color: '#3498db', weight: 3, opacity: 0.8, pane: 'topPane' }).addTo(map);
+    function addLine(group, coords, name) {
+        let l = L.polyline(coords, { color: '#3498db', weight: 3, pane: 'topPane' }).addTo(group);
         l.bindTooltip(name, { sticky: true });
-        l.on('mouseover', function() { 
-            if(quizActive && document.getElementById('hard-mode').checked) this.closeTooltip(); 
-            else this.setStyle({weight: 6});
-        });
-        l.on('mouseout', function() { this.setStyle({weight: 3}); });
         l.on('click', (e) => handleInteraction(name, "Fluss", e, l));
         searchIndex.push({name, type: "Fluss", layer: l});
+    }
+
+    function addCity(coords, name) {
+        let c = L.circleMarker(coords, { radius: 6, color: '#000', fillColor: '#fff', fillOpacity: 1, weight: 2, pane: 'topPane' }).addTo(lgStaedte);
+        c.bindTooltip(name, { direction: 'top' });
+        c.on('click', (e) => handleInteraction(name, "Stadt", e, c));
+        searchIndex.push({name, type: "Stadt", layer: c});
     }
 
     // --- INTERAKTION ---
@@ -198,23 +170,28 @@
             checkAnswer(name);
         } else {
             const data = await fetchWiki(name, type);
-            let content = `<div class="wiki-card"><b>${name}</b><br><small style="color:#7f8c8d">${type}</small>`;
-            if(data && data.extract) {
-                content += `<div class="wiki-extract">${data.extract.substring(0, 160)}...</div>`;
-                if(data.thumbnail) content += `<img src="${data.thumbnail.source}">`;
-                content += `<br><a href="${data.content_urls.desktop.page}" target="_blank" style="font-size:0.8em; color:var(--accent)">Vollständiger Artikel</a>`;
-            } else {
-                content += `<p style="font-size:0.85em">Klicke im Quiz-Modus auf dieses Objekt, um XP zu sammeln!</p>`;
-            }
-            content += `</div>`;
+            let content = `<b>${name}</b> (${type})<br>`;
+            if(data) {
+                content += `<small>${data.extract}</small><br><img src="${data.thumbnail?.source || ''}">`;
+            } else { content += "Keine Wikipedia-Details gefunden."; }
             L.popup().setLatLng(event.latlng || event.target.getLatLng()).setContent(content).openOn(map);
         }
-        L.DomEvent.stopPropagation(event);
     }
 
-    // --- QUIZ LOGIK ---
+    // --- SUCHE ---
+    function doSearch(val) {
+        if(val.length < 2) return;
+        const item = searchIndex.find(i => i.name.toLowerCase().includes(val.toLowerCase()));
+        if(item) {
+            map.flyTo(item.layer.getBounds ? item.layer.getBounds().getCenter() : item.layer.getLatLng(), 6);
+            item.layer.openTooltip();
+        }
+    }
+
+    // --- QUIZ ---
     function startQuiz() {
         quizActive = true;
+        sessionPool = [...searchIndex]; // Pool füllen
         document.getElementById('btn-start').style.display = 'none';
         document.getElementById('btn-stop').style.display = 'block';
         nextQuestion();
@@ -229,63 +206,81 @@
 
     function nextQuestion() {
         if(!quizActive) return;
-        currentTarget = searchIndex[Math.floor(Math.random() * searchIndex.length)];
-        document.getElementById('quiz-question').innerText = `Finde: ${currentTarget.name}`;
+        if(document.getElementById('no-duplicates').checked && sessionPool.length === 0) {
+            alert("Alle Orte dieser Runde geschafft!");
+            stopQuiz(); return;
+        }
+        
+        let pool = document.getElementById('no-duplicates').checked ? sessionPool : searchIndex;
+        currentTarget = pool[Math.floor(Math.random() * pool.length)];
+        document.getElementById('quiz-question').innerText = `Suche: ${currentTarget.name}`;
     }
 
-    function checkAnswer(clickedName) {
+    function checkAnswer(name) {
         const feedback = document.getElementById('feedback-overlay');
         feedback.style.display = 'block';
-
-        if(clickedName === currentTarget.name) {
-            feedback.innerText = "✅ RICHTIG! +10 XP";
-            feedback.style.background = "rgba(39, 174, 96, 0.95)";
+        if(name === currentTarget.name) {
+            feedback.innerText = "✅ Richtig! +10 XP";
+            feedback.style.background = "var(--success)";
             totalXP += 10;
-            localStorage.setItem('geoTotalXP_v6', totalXP);
-            
-            if(!masteredItems.includes(clickedName)) {
-                masteredItems.push(clickedName);
-                localStorage.setItem('geoMastered_v6', JSON.stringify(masteredItems));
+            if(document.getElementById('no-duplicates').checked) {
+                sessionPool = sessionPool.filter(i => i.name !== name);
             }
+            if(!masteredItems.includes(name)) masteredItems.push(name);
+            localStorage.setItem('geoMastered_v7', JSON.stringify(masteredItems));
+            localStorage.setItem('geoTotalXP_v7', totalXP);
             updateUI();
-            setTimeout(() => { feedback.style.display = 'none'; nextQuestion(); }, 1000);
+            setTimeout(() => { feedback.style.display = 'none'; nextQuestion(); }, 800);
         } else {
-            feedback.innerText = "❌ LEIDER FALSCH";
-            feedback.style.background = "rgba(231, 76, 60, 0.95)";
-            setTimeout(() => feedback.style.display = 'none', 1000);
+            feedback.innerText = "❌ Falsch!";
+            feedback.style.background = "var(--danger)";
+            setTimeout(() => feedback.style.display = 'none', 800);
         }
     }
 
-    // --- DATEN-IMPORT (GEBÜNDELT) ---
-    // Gebirge [cite: 6, 7]
-    addPoly([[58,6], [62,10], [69,19], [70,25], [68,16], [60,5]], "Skandinavisches Gebirge", "Gebirge", "#8B4513");
-    addPoly([[44,7], [46,6], [47.5,9], [47.5,13], [48,16], [46,14]], "Alpen", "Gebirge", "#8B4513");
-    addPoly([[48,17], [49.5,19], [50,23], [47,26], [45,26], [45,23]], "Karpaten", "Gebirge", "#8B4513");
-    addPoly([[50,58], [55,59], [60,59], [66,65], [60,62], [52,60]], "Ural", "Gebirge", "#8B4513");
-    addPoly([[43,-1.5], [42.5,0], [42.5,3]], "Pyrenäen", "Gebirge", "#8B4513");
-    addPoly([[44,37], [41,49], [42,50]], "Kaukasus", "Gebirge", "#8B4513");
+    function updateUI() {
+        document.getElementById('stat-xp').innerText = totalXP;
+        const percent = Math.round((masteredItems.length / searchIndex.length) * 100);
+        document.getElementById('progress-bar').style.width = percent + '%';
+        document.getElementById('progress-text').innerText = percent + '% gelernt';
+    }
 
-    // Landschaften [cite: 7, 8]
-    addPoly([[52,6], [54,8], [54,14], [52,14]], "Norddeutsches Tiefland", "Landschaft", "#2ecc71");
-    addPoly([[45,8], [45.5,11], [44.5,12]], "Poebene", "Landschaft", "#2ecc71");
-    addPoly([[61,24], [63,30], [61,29]], "Finnische Seenplatte", "Landschaft", "#2ecc71");
-    addPoly([[46,47], [49,50], [47,53]], "Kaspische Senke", "Landschaft", "#f1c40f");
+    // --- DATEN-IMPORT (PDF AUSZUG) [cite: 6, 7, 8, 13, 14, 16] ---
+    // Gebirge
+    addPoly(lgGebirge, [[58,6], [62,10], [69,19], [70,25], [60,5]], "Skandinavisches Gebirge", "Gebirge", "#8b4513");
+    addPoly(lgGebirge, [[50,58], [60,59], [66,65], [52,60]], "Ural", "Gebirge", "#8b4513");
+    addPoly(lgGebirge, [[44,7], [48,16], [46,14]], "Alpen", "Gebirge", "#8b4513");
+    addPoly(lgGebirge, [[43,-1.5], [42.5,3]], "Pyrenäen", "Gebirge", "#8b4513");
+    addPoly(lgGebirge, [[44,37], [41,49], [42,50]], "Kaukasus", "Gebirge", "#8b4513");
+    addPoly(lgGebirge, [[50.5,15], [51,16], [50,17.5]], "Sudeten", "Gebirge", "#8b4513");
 
-    // Flüsse  (Mit verbesserten Koordinaten)
-    addLine([[46.6,9.4], [47.5,7.6], [50.0,8.0], [51.9,4.1]], "Rhein");
-    addLine([[48.1,8.1], [48.2,16.4], [47.5,19.0], [44.5,22.5], [45.2,29.7]], "Donau");
-    addLine([[57,33], [56,44], [53,49], [46,48]], "Wolga");
-    addLine([[50.7,15.6], [51.0,13.0], [53.5,10.0], [53.9,8.6]], "Elbe");
+    // Flüsse [cite: 13]
+    addLine(lgFluesse, [[62,11.5], [59,10.9]], "Glama");
+    addLine(lgFluesse, [[62,12], [59,13.5]], "Klarälv");
+    addLine(lgFluesse, [[57,33], [53,49], [46,48]], "Wolga");
+    addLine(lgFluesse, [[48,8], [47,19], [45,29]], "Donau");
+    addLine(lgFluesse, [[46,9], [51,4]], "Rhein");
+    addLine(lgFluesse, [[50,15], [53,8]], "Elbe");
+    addLine(lgFluesse, [[54,38], [47,39]], "Don");
+
+    // Seen [cite: 14]
+    addPoly(lgSeen, [[58,12], [59,14], [58,14]], "Vänersee", "See", "#3498db");
+    addPoly(lgSeen, [[60,30], [61,33], [60,33]], "Ladogasee", "See", "#3498db");
+    addPoly(lgSeen, [[61,34], [62,36]], "Onegasee", "See", "#3498db");
+    addPoly(lgSeen, [[47.4,9.1], [47.8,9.5]], "Bodensee", "See", "#3498db");
+
+    // Inseln [cite: 16]
+    addPoly(lgInseln, [[67.5,12], [69,16]], "Lofoten", "Insel", "#9b59b6");
+    addPoly(lgInseln, [[63,-24], [66,-13]], "Island", "Insel", "#9b59b6");
+    addPoly(lgInseln, [[36,12], [38,15]], "Sizilien", "Insel", "#9b59b6");
+    addPoly(lgInseln, [[44,32], [46,36]], "Krim", "Halbinsel", "#9b59b6");
 
     // Städte
     addCity([52.52, 13.40], "Berlin");
     addCity([48.85, 2.35], "Paris");
-    addCity([41.90, 12.49], "Rom");
-    addCity([51.50, -0.12], "London");
-    addCity([48.20, 16.37], "Wien");
     addCity([55.75, 37.61], "Moskau");
+    addCity([51.50, -0.12], "London");
 
-    // Initialisierung
     updateUI();
 </script>
 </body>
