@@ -2,286 +2,693 @@
 <html lang="de">
 <head>
     <meta charset="UTF-8">
-    <title>Geo-Master Europa 7.0 - Komplettversion</title>
+    <title>Physische Europakarte & Topographie Quiz</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
-        :root {
-            --primary: #2c3e50; --accent: #3498db; --success: #27ae60;
-            --danger: #e74c3c; --light: #f8f9fa;
-        }
-
-        body, html { height: 100%; margin: 0; font-family: 'Segoe UI', sans-serif; overflow: hidden; }
-        #map { height: 100vh; width: 100%; background: #aad3df; }
-
-        /* --- SIDEBAR --- */
-        #quiz-sidebar {
-            position: absolute; top: 0; left: -350px; width: 320px; height: 100%;
-            background: white; z-index: 2000; transition: 0.4s ease;
-            box-shadow: 5px 0 25px rgba(0,0,0,0.3); padding: 20px;
-            display: flex; flex-direction: column;
-        }
-        #quiz-sidebar.open { left: 0; }
-        .close-sidebar { 
-            position: absolute; top: 10px; right: 10px; background: none; 
-            border: none; font-size: 20px; cursor: pointer; color: #999; 
-        }
-
-        #menu-toggle {
-            position: absolute; bottom: 30px; left: 20px; z-index: 1500;
-            background: var(--primary); color: white; border: none; padding: 15px 25px;
-            border-radius: 50px; cursor: pointer; font-weight: bold;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.4);
-        }
-
-        /* --- SEARCH --- */
-        #search-box {
-            position: absolute; top: 20px; left: 20px; z-index: 1000; width: 250px;
-        }
-        #search-input {
-            width: 100%; padding: 12px 20px; border-radius: 25px; border: none;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.2); outline: none;
-        }
-
-        /* --- PROGRESS --- */
-        .progress-container { margin: 15px 0; background: #eee; border-radius: 12px; height: 20px; overflow: hidden; position: relative; }
-        #progress-bar { height: 100%; background: var(--success); width: 0%; transition: 0.5s; }
-        #progress-text { position: absolute; width: 100%; text-align: center; font-size: 0.75rem; line-height: 20px; font-weight: bold; }
-
-        .btn { width: 100%; padding: 12px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; margin-bottom: 10px; }
-        .btn-start { background: var(--accent); color: white; }
-        .btn-stop { background: var(--danger); color: white; display: none; }
-
-        #feedback-overlay {
-            position: absolute; top: 20%; left: 50%; transform: translate(-50%, -50%);
-            z-index: 3000; padding: 20px 40px; border-radius: 50px; color: white;
-            font-weight: bold; font-size: 2em; display: none; pointer-events: none;
-        }
+        body, html { height: 100%; margin: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; overflow: hidden; }
         
-        .wiki-card img { width: 100%; border-radius: 5px; margin-top: 10px; }
+        /* Karten-Container */
+        #map { height: 100vh; width: 100%; background: #aad3df; z-index: 1; }
+        
+        /* Layer Control Anpassung */
+        .leaflet-control-layers { 
+            background: rgba(255, 255, 255, 0.95) !important; 
+            box-shadow: 0 0 15px rgba(0,0,0,0.3) !important;
+            border-radius: 8px !important;
+            padding: 10px !important;
+        }
+
+        /* Popup Styling */
+        .cat-header { font-size: 0.75em; font-weight: bold; text-transform: uppercase; color: #555; border-bottom: 1px solid #ccc; margin-bottom: 5px; padding-bottom: 2px; }
+        .item-name { font-size: 1.2em; font-weight: bold; color: #2c3e50; }
+
+        /* --- SUCHFUNKTION STYLING --- */
+        #search-container {
+            position: absolute;
+            top: 20px;
+            left: 60px; 
+            z-index: 1000;
+            width: 320px;
+            transition: opacity 0.3s;
+        }
+
+        #search-input {
+            width: 100%;
+            padding: 12px 20px;
+            border: none;
+            border-radius: 30px;
+            font-size: 15px;
+            outline: none;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+            transition: all 0.3s;
+        }
+        #search-input:focus { box-shadow: 0 6px 15px rgba(0,0,0,0.3); transform: scale(1.02); }
+
+        #search-results {
+            background: white;
+            border-radius: 10px;
+            margin-top: 8px;
+            max-height: 400px;
+            overflow-y: auto;
+            display: none;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.25);
+        }
+
+        .search-item {
+            padding: 10px 20px;
+            cursor: pointer;
+            border-bottom: 1px solid #f0f0f0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .search-item:last-child { border-bottom: none; }
+        .search-item:hover { background-color: #f0f8ff; }
+        
+        .search-name { font-weight: 600; color: #333; }
+        .search-type { font-size: 0.75em; color: #888; background: #eee; padding: 2px 6px; border-radius: 4px; }
+
+        /* --- QUIZ UI --- */
+        #quiz-panel {
+            position: absolute;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 2000;
+            background: white;
+            padding: 15px 25px;
+            border-radius: 12px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.3);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+            min-width: 300px;
+            text-align: center;
+        }
+
+        .quiz-btn {
+            background: #3498db;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+            transition: background 0.2s;
+        }
+        .quiz-btn:hover { background: #2980b9; }
+        .quiz-btn.secondary { background: #95a5a6; font-size: 14px; padding: 5px 15px; }
+        .quiz-btn.stop { background: #e74c3c; }
+
+        #quiz-question { font-size: 1.2em; font-weight: bold; color: #2c3e50; margin: 5px 0; }
+        #quiz-score { font-size: 0.9em; color: #7f8c8d; }
+        #quiz-feedback { font-weight: bold; height: 20px; font-size: 0.9em; }
+        .correct { color: #27ae60; }
+        .wrong { color: #c0392b; }
+
+        /* Verstecke UI Elemente im Quiz Modus wenn nötig */
+        body.quiz-mode #search-container { opacity: 0; pointer-events: none; }
+        
     </style>
 </head>
 <body>
 
-<div id="search-box">
-    <input type="text" id="search-input" placeholder="🔍 Ort suchen..." oninput="doSearch(this.value)">
+<div id="search-container">
+    <input type="text" id="search-input" placeholder="🔍 Suche nach Berg, Stadt, Fluss... (Enter)">
+    <div id="search-results"></div>
 </div>
 
-<button id="menu-toggle" onclick="toggleMenu()">☰ Quiz & Fortschritt</button>
-
-<div id="quiz-sidebar">
-    <button class="close-sidebar" onclick="toggleMenu()">×</button>
-    <h2>🎓 Lern-Zentrale</h2>
-    
-    <div class="progress-container">
-        <div id="progress-bar"></div>
-        <div id="progress-text">0% Meisterung</div>
-    </div>
-
-    <p>XP: <span id="stat-xp" style="font-weight:bold; color:var(--accent)">0</span></p>
-
-    <div id="quiz-question" style="font-size: 1.2em; color: var(--danger); font-weight: bold; margin: 20px 0; min-height: 50px;">
-        Klicke Start für das Quiz!
+<div id="quiz-panel">
+    <div id="quiz-start-view">
+        <h3>Geographie Quiz</h3>
+        <p style="font-size:0.9em; margin-bottom:10px; color:#666;">Teste dein Wissen basierend auf den aktuell sichtbaren Layern.</p>
+        <button class="quiz-btn" onclick="startQuiz()">Quiz Starten</button>
     </div>
     
-    <label style="display:block; margin-bottom: 10px;">
-        <input type="checkbox" id="no-duplicates"> 🚫 Keine Dopplungen (einmal pro Runde)
-    </label>
-    <label style="display:block; margin-bottom: 20px;">
-        <input type="checkbox" id="hard-mode"> 🤫 Profi-Modus (Namen aus)
-    </label>
-
-    <button class="btn btn-start" id="btn-start" onclick="startQuiz()">Quiz starten</button>
-    <button class="btn btn-stop" id="btn-stop" onclick="stopQuiz()">Beenden</button>
+    <div id="quiz-game-view" style="display:none;">
+        <div id="quiz-score">Punkte: 0 | Runde: 0</div>
+        <div id="quiz-question">Wo liegt...?</div>
+        <div id="quiz-feedback"></div>
+        <div style="margin-top:10px;">
+            <button class="quiz-btn secondary" onclick="skipQuestion()">Überspringen</button>
+            <button class="quiz-btn secondary stop" onclick="stopQuiz()">Beenden</button>
+        </div>
+    </div>
 </div>
 
-<div id="feedback-overlay"></div>
 <div id="map"></div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
 <script>
-    // --- MAP INITIALISIERUNG ---
-    var map = L.map('map', { zoomControl: false }).setView([50, 15], 4);
+    // --- 1. KARTE INITIALISIEREN ---
+    var map = L.map('map', { zoomControl: false }).setView([50.0, 15.0], 4);
+    L.control.zoom({ position: 'topright' }).addTo(map);
+
+    // --- 2. BASE-LAYERS ---
+    var openTopo = L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {
+        maxZoom: 17,
+        attribution: 'Map data: © OpenStreetMap, SRTM | Map style: © OpenTopoMap'
+    }).addTo(map);
+
+    var esriSattelite = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+        attribution: 'Tiles © Esri'
+    });
+
+    // --- 3. LAYER GRUPPEN ---
+    var lgLaender = L.layerGroup();
+    var lgGebirge = L.layerGroup();
+    var lgTiefland = L.layerGroup();
+    var lgFluesse = L.layerGroup();
+    var lgSeen = L.layerGroup();
+    var lgInseln = L.layerGroup();
+    var lgStaedte = L.layerGroup();
+
+    // --- 4. LÄNDERGRENZEN ---
+    fetch('https://raw.githubusercontent.com/datasets/geo-boundaries-world-110m/master/countries.geojson')
+        .then(res => res.json())
+        .then(data => {
+            L.geoJson(data, {
+                style: { color: "#555", weight: 1, fillOpacity: 0, dashArray: '5, 5' },
+                interactive: false 
+            }).addTo(lgLaender);
+        });
+
+    // --- 5. HILFSFUNKTIONEN & GLOBALER INDEX ---
+    const sGebirge = { color: '#8B4513', fillColor: '#A0522D', weight: 1, fillOpacity: 0.35 };
+    const sTiefland = { color: '#228B22', fillColor: '#90EE90', weight: 1, fillOpacity: 0.25 };
+    const sSee = { color: '#2980b9', fillColor: '#3498db', weight: 1, fillOpacity: 0.6 };
+    const sInsel = { color: '#6c5ce7', fillColor: '#a29bfe', weight: 1, fillOpacity: 0.3 };
+    const sFluss = { color: '#1e3799', weight: 2.5, opacity: 0.9 };
+
+    let searchIndex = []; // Für Suche und Quiz
     
-    // Panes für Klickbarkeit (Städte über Flächen)
-    map.createPane('areaPane').style.zIndex = 400;
-    map.createPane('topPane').style.zIndex = 650;
-
-    var topo = L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', { maxZoom: 17 }).addTo(map);
-    var satellite = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}');
-
-    // Layer Gruppen 
-    var lgGebirge = L.layerGroup().addTo(map);
-    var lgFluesse = L.layerGroup().addTo(map);
-    var lgSeen = L.layerGroup().addTo(map);
-    var lgInseln = L.layerGroup().addTo(map);
-    var lgStaedte = L.layerGroup().addTo(map);
-
-    L.control.layers({ "🏔️ Topografie": topo, "🛰️ Satellit": satellite }, 
-                     { "🏔️ Gebirge": lgGebirge, "〰️ Flüsse": lgFluesse, "💧 Seen": lgSeen, "🏝️ Inseln": lgInseln, "🏙️ Städte": lgStaedte },
-                     { collapsed: false, position: 'topright' }).addTo(map);
-
-    // --- LOGIK & SPEICHER ---
-    let searchIndex = [];
-    let sessionPool = []; // Für "Keine Dopplungen"
-    let masteredItems = JSON.parse(localStorage.getItem('geoMastered_v7') || '[]');
-    let totalXP = parseInt(localStorage.getItem('geoTotalXP_v7') || '0');
+    // QUIZ STATE
     let quizActive = false;
-    let currentTarget = null;
+    let quizPool = [];
+    let currentQuizItem = null;
+    let score = 0;
+    let rounds = 0;
 
-    function toggleMenu() { document.getElementById('quiz-sidebar').classList.toggle('open'); }
-
-    // Wikipedia Funktion für ALLE Kategorien 
-    async function fetchWiki(name, type) {
-        let q = name;
-        if(type === "Fluss") q += " (Fluss)";
-        if(type === "Gebirge") q += " (Gebirge)";
-        try {
-            const res = await fetch(`https://de.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(q)}`);
-            return res.ok ? await res.json() : null;
-        } catch(e) { return null; }
+    // Generische Funktion zum Hinzufügen von Objekten
+    function addPoly(group, coords, name, style, type) {
+        let p = L.polygon(coords, style);
+        // Wir binden das Popup nicht direkt, sondern nutzen Event-Handling
+        p.quizData = { name: name, type: type };
+        p.on('click', (e) => handleObjectClick(e, p));
+        p.addTo(group);
+        searchIndex.push({ name: name, layer: p, type: type, group: group });
     }
 
-    // --- RENDER FUNKTIONEN ---
-    function addPoly(group, coords, name, type, color) {
-        let p = L.polygon(coords, { color: color, fillColor: color, fillOpacity: 0.3, weight: 1.5, pane: 'areaPane' }).addTo(group);
-        p.bindTooltip(name, { sticky: true });
-        p.on('click', (e) => handleInteraction(name, type, e, p));
-        searchIndex.push({name, type, layer: p});
+    function addLine(group, coords, name, type) {
+        // Größere Klick-Toleranz für Linien (Flüsse) durch unsichtbare dicke Linie
+        let l = L.polyline(coords, sFluss);
+        let touchLine = L.polyline(coords, { weight: 15, opacity: 0 }); // Unsichtbarer Klick-Bereich
+        
+        let featureGroup = L.featureGroup([l, touchLine]);
+        featureGroup.quizData = { name: name, type: type };
+        
+        // Popup und Events auf die Gruppe
+        featureGroup.on('click', (e) => handleObjectClick(e, featureGroup));
+        featureGroup.addTo(group);
+        
+        // Referenz für Suche (wir zoomen auf die sichtbare Linie)
+        searchIndex.push({ name: name, layer: l, type: type, group: group, parent: featureGroup });
     }
 
-    function addLine(group, coords, name) {
-        let l = L.polyline(coords, { color: '#3498db', weight: 3, pane: 'topPane' }).addTo(group);
-        l.bindTooltip(name, { sticky: true });
-        l.on('click', (e) => handleInteraction(name, "Fluss", e, l));
-        searchIndex.push({name, type: "Fluss", layer: l});
+    function createPopupContent(type, name) {
+        return `<div class="cat-header">${type}</div><div class="item-name">${name}</div>`;
     }
 
-    function addCity(coords, name) {
-        let c = L.circleMarker(coords, { radius: 6, color: '#000', fillColor: '#fff', fillOpacity: 1, weight: 2, pane: 'topPane' }).addTo(lgStaedte);
-        c.bindTooltip(name, { direction: 'top' });
-        c.on('click', (e) => handleInteraction(name, "Stadt", e, c));
-        searchIndex.push({name, type: "Stadt", layer: c});
-    }
-
-    // --- INTERAKTION ---
-    async function handleInteraction(name, type, event, layer) {
+    // Zentrale Klick-Logik
+    function handleObjectClick(e, layer) {
         if (quizActive) {
-            checkAnswer(name);
+            checkAnswer(layer.quizData);
         } else {
-            const data = await fetchWiki(name, type);
-            let content = `<b>${name}</b> (${type})<br>`;
-            if(data) {
-                content += `<small>${data.extract}</small><br><img src="${data.thumbnail?.source || ''}">`;
-            } else { content += "Keine Wikipedia-Details gefunden."; }
-            L.popup().setLatLng(event.latlng || event.target.getLatLng()).setContent(content).openOn(map);
+            // Normaler Modus: Popup öffnen
+            let content = createPopupContent(layer.quizData.type, layer.quizData.name);
+            L.popup()
+                .setLatLng(e.latlng)
+                .setContent(content)
+                .openOn(map);
         }
     }
 
-    // --- SUCHE ---
-    function doSearch(val) {
-        if(val.length < 2) return;
-        const item = searchIndex.find(i => i.name.toLowerCase().includes(val.toLowerCase()));
-        if(item) {
-            map.flyTo(item.layer.getBounds ? item.layer.getBounds().getCenter() : item.layer.getLatLng(), 6);
-            item.layer.openTooltip();
-        }
-    }
+    // --- 6. DATEN (FLÜSSE VERBESSERT) ---
 
-    // --- QUIZ ---
+    // A. GEBIRGE (Original)
+    const dGebirge = [
+        {n: "Skandinavisches Gebirge", c: [[58.5,6.0], [61.0,7.5], [63.0,11.0], [68.0,18.0], [70.5,23.0], [69.5,26.0], [66.0,19.0], [61.5,12.0], [59.0,9.0]]},
+        {n: "Ural", c: [[68.0,66.0], [66.0,65.0], [62.0,59.0], [59.0,59.0], [55.0,59.0], [51.0,58.0], [51.0,61.0], [55.0,61.5], [62.0,61.0], [67.0,67.5]]},
+        {n: "Alpen", c: [[43.8,7.2], [45.0,6.5], [46.5,8.0], [47.5,9.5], [47.6,12.5], [47.5,14.5], [48.2,16.2], [47.0,15.0], [46.0,11.0], [44.2,7.5]]},
+        {n: "Karpaten", c: [[48.2,17.0], [49.5,19.5], [49.8,22.0], [48.5,24.5], [47.0,26.5], [45.5,26.8], [44.8,24.5], [45.5,22.0], [47.0,22.5], [48.0,20.0]]},
+        {n: "Pyrenäen", c: [[43.3,-1.8], [42.8,0.0], [42.6,2.0], [42.4,3.2], [42.8,3.2], [43.1,1.5], [43.5,-1.5]]},
+        {n: "Apenninen", c: [[44.5,8.5], [44.0,11.0], [42.5,13.5], [40.5,16.0], [38.0,16.0], [39.5,15.0], [41.5,12.5], [43.5,9.5]]},
+        {n: "Dinarisches Gebirge", c: [[46.0,14.5], [45.2,15.0], [44.0,16.5], [42.5,18.5], [42.0,20.0], [42.5,20.5], [44.5,18.0], [45.8,15.5]]},
+        {n: "Balkan", c: [[43.7,22.5], [43.0,23.5], [42.7,25.0], [42.7,28.0], [43.2,27.5], [43.2,25.0], [44.0,23.0]]},
+        {n: "Rhodopen", c: [[41.5,23.5], [41.2,25.0], [41.4,26.0], [42.0,25.5], [42.1,24.0]]},
+        {n: "Pindos", c: [[40.5,20.5], [39.0,21.5], [38.5,22.5], [39.5,21.0], [40.5,21.5]]},
+        {n: "Kaukasus", c: [[44.5,37.0], [43.5,41.0], [42.5,45.0], [41.0,49.5], [41.5,50.0], [43.0,47.0], [44.0,43.0], [45.5,38.0]]},
+        {n: "Sudeten", c: [[51.0,14.5], [50.8,15.5], [50.5,16.5], [50.0,17.5], [50.5,17.5], [51.2,16.0], [51.3,15.0]]},
+        {n: "Zentralmassiv", c: [[44.2,2.0], [45.8,2.2], [46.2,3.5], [45.5,4.8], [44.2,4.5], [43.8,3.0]]},
+        {n: "Kantabrisches Gebirge", c: [[43.0,-6.5], [43.2,-4.5], [43.0,-3.0], [42.5,-3.5], [42.5,-6.0]]},
+        {n: "Kastilisches Gebirge", c: [[40.2,-6.0], [41.0,-4.5], [40.8,-3.0], [40.2,-3.5], [40.0,-5.0]]},
+        {n: "Iberisches Randgebirge", c: [[41.5,-3.0], [40.5,-1.5], [40.2,-0.5], [41.0,0.0], [42.0,-2.5]]},
+        {n: "Sierra Morena", c: [[38.2,-7.0], [38.5,-5.0], [38.5,-3.0], [37.8,-3.5], [37.8,-6.5]]},
+        {n: "Betische Kordillere", c: [[36.5,-5.5], [37.5,-3.5], [37.8,-2.0], [37.2,-1.5], [36.5,-3.0], [36.0,-5.0]]},
+        {n: "Dt. Mittelgebirge", c: [[50.2,6.5], [51.5,9.5], [51.0,14.0], [49.0,13.5], [48.5,11.0], [48.5,8.0]]},
+        {n: "Alpenvorland", c: [[47.5,9.0], [48.5,11.0], [48.5,14.5], [48.0,15.0], [47.5,13.0]]},
+        {n: "Siebenbürgen", c: [[45.8,23.0], [47.0,23.0], [47.2,25.5], [45.8,25.5]]},
+        {n: "Riesengebirge", c: [[50.7,15.4], [50.85,15.7], [50.75,15.9], [50.65,15.5]]},
+        {n: "Hochland von Kastilien", c: [[39.5,-6.0], [41.5,-5.5], [41.5,-2.0], [39.5,-2.5]]},
+        {n: "Schottische Hochlande", c: [[56.5,-5.5], [58.5,-5.0], [58.5,-3.0], [57.0,-3.5]]},
+        {n: "Timanrücken", c: [[63.0,50.0], [65.0,49.0], [67.0,48.0], [67.5,50.0], [65.0,53.0]]}
+    ];
+
+    // B. TIEFLÄNDER (Original)
+    const dTiefland = [
+        {n: "Norddt. Tiefland", c: [[52.0,6.0], [54.0,7.5], [54.5,13.5], [52.5,14.5], [51.5,11.0]]},
+        {n: "Londoner Becken", c: [[51.2,-1.2], [51.9,0.5], [51.5,1.2], [51.0,0.5]]},
+        {n: "Pariser Becken", c: [[47.5,0.0], [49.5,1.5], [50.0,4.0], [48.0,4.5], [47.0,2.0]]},
+        {n: "Finnische Seenplatte", c: [[61.0,24.0], [63.5,25.5], [63.5,30.0], [61.0,29.5]]},
+        {n: "Nordruss. Tiefland", c: [[62.0,40.0], [66.0,43.0], [67.0,55.0], [61.0,53.0]]},
+        {n: "Nordruss. Landrücken", c: [[58.0,35.0], [60.5,45.0], [59.5,52.0], [57.0,45.0]]},
+        {n: "Mittelruss. Platte", c: [[51.0,34.0], [54.5,36.0], [54.0,39.0], [51.0,39.0]]},
+        {n: "Kaspische Senke", c: [[46.0,47.0], [48.5,50.0], [48.0,53.0], [45.0,53.0], [44.0,50.0]]},
+        {n: "Wolgaplatte", c: [[50.0,44.0], [54.0,47.0], [53.5,50.0], [50.0,47.0]]},
+        {n: "Alföld", c: [[45.5,19.0], [48.0,20.0], [48.0,22.5], [46.0,22.0]]},
+        {n: "Walachei", c: [[43.8,23.5], [44.8,25.0], [45.2,27.5], [44.2,28.0]]},
+        {n: "Baltische Landrücken", c: [[53.0,12.0], [54.5,18.0], [55.5,25.0], [53.5,23.0]]},
+        {n: "Normandie", c: [[48.8,-1.8], [49.8,-1.2], [49.5,1.0], [48.8,0.5]]},
+        {n: "Bretagne", c: [[47.8,-4.8], [48.7,-4.0], [48.5,-1.8], [47.5,-2.2]]},
+        {n: "Poebene", c: [[44.8,7.5], [45.5,9.5], [45.5,12.5], [44.5,12.0]]}
+    ];
+
+    // C. INSELN (Original)
+    const dInseln = [
+        {n: "Island", c: [[63.4,-24.5], [66.5,-24.5], [66.5,-13.5], [63.4,-13.5]]}, 
+        {n: "Lofoten", c: [[67.4,11.9], [68.3,13.5], [69.4,16.2], [68.2,15.5]]},
+        {n: "Färöer", c: [[61.4,-7.5], [62.4,-7.0], [62.2,-6.3]]},
+        {n: "Shetland Inseln", c: [[59.8,-1.8], [60.9,-1.2], [60.5,-0.7]]},
+        {n: "Orkney Inseln", c: [[58.7,-3.5], [59.4,-3.2], [59.2,-2.4]]},
+        {n: "Hebriden", c: [[56.5,-7.8], [58.6,-6.4], [58.2,-5.8]]},
+        {n: "Rockall", c: [[57.58,-13.68], [57.60,-13.69], [57.59,-13.67]]},
+        {n: "Scilly Inseln", c: [[49.85,-6.45], [49.95,-6.35], [49.85,-6.25]]},
+        {n: "Jütland", c: [[54.8,8.5], [57.5,10.0], [57.5,10.8], [54.5,10.0]]},
+        {n: "Bornholm", c: [[55.0,14.65], [55.3,14.7], [55.1,15.15]]},
+        {n: "Öland", c: [[56.2,16.4], [57.3,17.0], [57.4,17.1], [56.3,16.5]]},
+        {n: "Gotland", c: [[56.9,18.1], [57.9,19.2], [57.4,18.8]]},
+        {n: "Ösel (Saaremaa)", c: [[57.9,21.8], [58.6,22.0], [58.5,23.3]]},
+        {n: "Åland Inseln", c: [[59.9,19.5], [60.4,20.0], [60.2,20.8]]},
+        {n: "Kanalinseln", c: [[49.1,-2.7], [49.5,-2.2], [49.2,-2.0]]},
+        {n: "Kola", c: [[66.5,32.0], [69.5,32.5], [68.0,41.0], [66.2,39.0]]},
+        {n: "Kolgujew", c: [[68.7,48.5], [69.4,49.0], [69.0,50.2]]},
+        {n: "Kanin", c: [[66.5,43.5], [68.5,43.8], [68.0,45.5]]},
+        {n: "Balearen", c: [[38.6,1.2], [40.0,3.8], [39.8,4.5], [38.5,1.5]]},
+        {n: "Sizilien", c: [[36.6,12.4], [38.2,12.6], [38.2,15.6], [36.6,15.1]]},
+        {n: "Sardinien", c: [[38.9,8.1], [41.2,8.2], [41.2,9.8], [38.9,9.6]]},
+        {n: "Korsika", c: [[41.35,8.55], [43.0,8.4], [43.0,9.5], [41.4,9.4]]},
+        {n: "Kreta", c: [[35.2,23.5], [35.6,24.0], [35.2,26.3]]},
+        {n: "Krim", c: [[44.4,32.5], [45.8,32.8], [46.0,34.5], [45.4,36.5], [44.4,35.5]]},
+        {n: "Peloponnes", c: [[36.4,21.5], [38.2,21.5], [37.8,23.5], [36.4,23.0]]},
+        {n: "Ionische Inseln", c: [[37.5,20.5], [39.8,19.5], [38.5,20.8]]},
+        {n: "Euböa", c: [[37.9,24.0], [38.5,23.5], [39.0,23.0]]},
+        {n: "Lesbos", c: [[39.0,26.0], [39.4,26.0], [39.2,26.6]]},
+        {n: "Rhodos", c: [[35.8,27.7], [36.4,28.2], [35.9,28.0]]}
+    ];
+
+    // D. FLÜSSE (VERBESSERT: Genauere Verläufe für die großen Flüsse)
+    const dFluesse = [
+        {n: "Glama", c: [[62.0,11.5], [61.1,11.3], [60.2,11.7], [59.2,10.9]]},
+        {n: "Klarälv", c: [[62.5,12.0], [61.0,13.0], [59.4,13.5]]},
+        {n: "Dalälv", c: [[61.2,13.0], [60.3,15.0], [60.6,17.5]]},
+        {n: "Göta älv", c: [[58.4,12.3], [57.7,11.9]]},
+        {n: "Indalsälv", c: [[63.3,13.0], [63.0,15.5], [62.5,17.4]]},
+        {n: "Umeälv", c: [[66.0,15.0], [64.8,17.5], [63.8,20.3]]},
+        {n: "Torneälv", c: [[68.0,20.0], [67.0,23.5], [65.8,24.1]]},
+        {n: "Petschora", c: [[62.2,59.4], [63.0,57.5], [65.0,57.0], [66.0,55.0], [67.0,53.0], [68.2,53.5]]},
+        {n: "Mesen", c: [[64.5,48.0], [65.0,47.0], [66.2,44.2]]},
+        {n: "Nördl. Dwina", c: [[61.0,46.5], [62.0,44.5], [63.0,42.0], [64.5,40.5]]},
+        {n: "Suchona", c: [[59.5,39.5], [60.5,42.0], [61.0,46.5]]},
+        {n: "Wytschegda", c: [[62.2,54.0], [61.8,50.0], [61.0,46.5]]},
+        {n: "Kama", c: [[58.5,53.5], [58.0,56.0], [56.0,54.0], [55.8,51.0], [55.4,49.0]]},
+        {n: "Ural", c: [[54.5,59.5], [52.5,59.0], [51.5,55.0], [51.2,51.0], [48.5,51.5], [47.0,51.8]]},
+        {n: "Wjatka", c: [[59.0,52.0], [57.5,50.0], [55.8,51.5]]},
+        {n: "Bjelaja", c: [[54.5,58.5], [55.5,56.0], [55.8,53.5]]},
+        {n: "Wolga", c: [[57.2,32.5], [56.8,35.5], [57.8,38.5], [56.5,43.5], [56.0,46.0], [56.2,49.5], [55.0,49.0], [53.2,49.0], [52.0,47.5], [51.0,46.0], [48.7,44.5], [47.0,46.5], [45.8,48.0]]},
+        {n: "Don", c: [[54.0,38.2], [52.0,39.0], [50.0,41.0], [49.5,43.5], [48.5,43.0], [47.5,42.0], [47.2,40.5], [47.1,39.4]]},
+        {n: "Onega", c: [[61.5,39.0], [63.0,38.5], [63.9,38.0]]},
+        {n: "Oka", c: [[52.5,36.5], [54.0,37.0], [55.0,40.0], [56.3,43.9]]},
+        {n: "Desna", c: [[54.5,33.3], [52.0,32.0], [50.5,30.5]]},
+        {n: "Donez", c: [[51.0,37.0], [49.0,39.0], [47.6,40.8]]},
+        {n: "Kuma", c: [[44.0,42.0], [44.8,44.5], [45.0,46.5]]},
+        {n: "Kuban", c: [[43.5,42.0], [45.0,40.0], [45.0,37.5]]},
+        {n: "Dnipro", c: [[55.8,33.5], [54.0,31.0], [51.0,30.5], [49.0,34.0], [48.0,35.0], [47.5,34.0], [46.5,32.3]]},
+        {n: "Düna (Daugava)", c: [[56.8,32.5], [55.8,30.0], [56.0,27.0], [56.5,25.0], [57.0,24.0]]},
+        {n: "Memel (Neman)", c: [[53.5,27.5], [54.0,24.0], [55.0,22.5], [55.3,21.2]]},
+        {n: "Donau", c: [[48.0,8.2], [48.5,10.0], [48.4,13.5], [48.2,16.4], [47.8,19.0], [45.8,18.8], [44.8,20.5], [44.5,22.5], [43.7,25.0], [44.2,27.5], [45.2,29.6]]},
+        {n: "Weichsel", c: [[49.6,19.0], [50.5,20.0], [52.0,21.5], [53.0,19.0], [53.5,18.8], [54.4,18.9]]},
+        {n: "Oder", c: [[49.6,17.5], [51.0,17.0], [52.2,15.0], [52.5,14.5], [53.6,14.6]]},
+        {n: "Elbe", c: [[50.7,15.6], [51.0,14.0], [51.5,13.5], [52.2,12.0], [53.0,11.0], [53.5,9.5], [53.9,8.6]]},
+        {n: "Rhein", c: [[46.6,9.4], [47.6,9.5], [47.5,7.6], [48.5,7.9], [50.0,8.3], [50.5,7.3], [51.8,6.0], [51.9,4.1]]},
+        {n: "Mosel", c: [[47.9,6.5], [49.5,6.5], [50.3,7.6]]},
+        {n: "Main", c: [[50.0,11.5], [50.1,9.0], [50.0,8.3]]},
+        {n: "Inn", c: [[46.5,9.8], [47.5,11.5], [48.5,13.5]]},
+        {n: "Weser", c: [[51.4,9.6], [52.5,9.0], [53.5,8.5]]},
+        {n: "Maas", c: [[48.0,5.6], [49.5,5.0], [50.8,5.7], [51.8,4.1]]},
+        {n: "Dnister", c: [[49.2,23.0], [48.5,27.0], [46.3,30.3]]},
+        {n: "Pruth", c: [[48.2,24.5], [47.0,27.5], [45.5,28.2]]},
+        {n: "Theiß", c: [[48.1,24.2], [47.5,20.2], [46.0,20.0], [45.2,20.3]]},
+        {n: "Save", c: [[46.3,14.1], [45.2,17.0], [44.8,20.4]]},
+        {n: "Drau", c: [[46.7,12.3], [46.0,17.0], [45.5,18.9]]},
+        {n: "Seine", c: [[47.5,4.7], [48.5,2.8], [49.0,1.5], [49.4,0.1]]},
+        {n: "Loire", c: [[44.8,4.4], [45.5,4.0], [47.2,1.5], [47.3,0.5], [47.2,-2.2]]},
+        {n: "Garonne", c: [[42.7,0.8], [44.5,0.0], [45.0,-0.6], [45.6,-1.0]]},
+        {n: "Rhône", c: [[46.6,8.4], [46.0,6.0], [45.7,4.8], [43.3,4.8]]},
+        {n: "Themse", c: [[51.7,-2.0], [51.6,-1.0], [51.5,-0.1], [51.5,0.7]]},
+        {n: "Po", c: [[44.7,7.0], [45.0,9.0], [45.0,10.0], [45.0,11.5], [44.9,12.4]]},
+        {n: "Tiber", c: [[43.8,12.1], [42.5,12.5], [41.7,12.2]]},
+        {n: "Ebro", c: [[43.0,-4.0], [42.5,-3.0], [42.0,-1.5], [41.0,0.5], [40.7,0.8]]},
+        {n: "Duero", c: [[41.9,-2.8], [41.5,-5.5], [41.1,-8.7]]},
+        {n: "Tajo", c: [[40.3,-1.7], [39.8,-4.5], [39.0,-7.0], [38.7,-9.4]]},
+        {n: "Guadiana", c: [[39.1,-3.7], [38.5,-7.0], [37.2,-7.4]]},
+        {n: "Guadalquivir", c: [[37.9,-2.9], [37.5,-5.5], [36.8,-6.3]]},
+        {n: "Narew", c: [[52.8,24.2], [53.1,23.0], [52.5,21.1]]},
+        {n: "Bug", c: [[49.9,25.0], [51.5,23.6], [52.5,21.1]]},
+        {n: "Pripjat", c: [[51.3,23.9], [52.1,26.5], [51.2,30.3]]},
+        {n: "Warthe", c: [[50.5,19.4], [52.0,17.5], [52.6,14.6]]},
+        {n: "Morava", c: [[50.2,16.9], [49.2,17.4], [48.2,16.9]]},
+        {n: "Maritza", c: [[42.2,23.6], [42.1,25.0], [41.7,26.2], [40.7,26.1]]}
+    ];
+
+    // E. SEEN & STAUSEEN (Original)
+    const dSeen = [
+        {n: "Ladogasee", c: [[59.9,30.0], [61.0,30.0], [61.7,31.5], [61.0,33.0], [60.0,32.5]]},
+        {n: "Onegasee", c: [[61.0,34.2], [62.5,34.5], [62.8,36.0], [61.5,36.5], [60.9,35.8]]},
+        {n: "Vänersee", c: [[58.3,12.3], [59.4,13.5], [59.0,14.2], [58.4,13.8]]},
+        {n: "Vättersee", c: [[57.8,14.0], [58.5,14.5], [58.6,15.0], [57.8,14.4]]},
+        {n: "Mälarsee", c: [[59.2,16.0], [59.6,17.0], [59.4,18.0], [59.2,17.5]]},
+        {n: "Peipussee", c: [[57.9,27.3], [58.8,27.2], [59.0,27.5], [58.5,28.0]]},
+        {n: "Bodensee", c: [[47.45,9.1], [47.8,9.2], [47.7,9.7], [47.4,9.6]]},
+        {n: "Inarisee", c: [[68.7,27.2], [69.3,27.8], [69.2,28.8], [68.8,28.4]]},
+        {n: "Kaspisches Meer", c: [[47.0,46.8], [45.0,47.5], [40.0,49.0], [37.0,50.5], [37.5,54.0], [44.0,53.0], [47.0,50.0]]},
+        {n: "Kamastausee", c: [[57.5,55.0], [59.0,56.5], [58.5,57.0], [57.5,56.0]]},
+        {n: "Rybinsker Stausee", c: [[58.0,38.0], [58.8,38.0], [58.6,39.0], [58.0,38.8]]},
+        {n: "Gorkijerstausee", c: [[56.7,43.0], [57.4,43.2], [57.3,43.8], [56.7,43.5]]},
+        {n: "Kuibyschewer Stausee", c: [[53.2,49.0], [54.5,49.0], [55.0,49.5], [53.5,49.8]]},
+        {n: "Saratower Stausee", c: [[52.0,47.8], [52.8,48.5], [51.8,48.2]]},
+        {n: "Wolgograder Stausee", c: [[49.0,45.0], [51.0,46.5], [50.5,46.8]]},
+        {n: "Zimljansker Stausee", c: [[47.5,42.2], [48.2,43.5], [47.8,44.0], [47.3,42.8]]},
+        {n: "Kachiwkaer Stausee", c: [[46.8,33.5], [47.5,35.0], [47.3,35.5], [46.7,34.0]]}
+    ];
+
+    // F. STÄDTE / HAUPTSTÄDTE (Original)
+    const dStaedte = [
+        {n: "Tirana", c: [41.3275, 19.8187]}, {n: "Andorra la Vella", c: [42.5063, 1.5218]},
+        {n: "Brüssel", c: [50.8503, 4.3517]}, {n: "Sarajevo", c: [43.8563, 18.4131]},
+        {n: "Sofia", c: [42.6977, 23.3219]}, {n: "Kopenhagen", c: [55.6761, 12.5683]},
+        {n: "Berlin", c: [52.5200, 13.4050]}, {n: "Tallinn", c: [59.4370, 24.7536]},
+        {n: "Helsinki", c: [60.1699, 24.9384]}, {n: "Paris", c: [48.8566, 2.3522]},
+        {n: "Athen", c: [37.9838, 23.7275]}, {n: "Dublin", c: [53.3498, -6.2603]},
+        {n: "Reykjavík", c: [64.1265, -21.8174]}, {n: "Rom", c: [41.9028, 12.4964]},
+        {n: "Prishtina", c: [42.6629, 21.1655]}, {n: "Zagreb", c: [45.8150, 15.9819]},
+        {n: "Riga", c: [56.9496, 24.1052]}, {n: "Vaduz", c: [47.1410, 9.5209]},
+        {n: "Vilnius", c: [54.6872, 25.2797]}, {n: "Luxemburg", c: [49.6116, 6.1319]},
+        {n: "Valletta", c: [35.8992, 14.5141]}, {n: "Skopje", c: [41.9981, 21.4254]},
+        {n: "Chisinau", c: [47.0105, 28.8638]}, {n: "Monaco", c: [43.7384, 7.4246]},
+        {n: "Podgorica", c: [42.4304, 19.2594]}, {n: "Amsterdam", c: [52.3676, 4.9041]},
+        {n: "Oslo", c: [59.9139, 10.7522]}, {n: "Wien", c: [48.2082, 16.3738]},
+        {n: "Warschau", c: [52.2297, 21.0122]}, {n: "Lissabon", c: [38.7169, -9.1399]},
+        {n: "Bukarest", c: [44.4268, 26.1025]}, {n: "Moskau", c: [55.7558, 37.6173]},
+        {n: "San Marino", c: [43.9424, 12.4578]}, {n: "Stockholm", c: [59.3293, 18.0686]},
+        {n: "Bern", c: [46.9480, 7.4474]}, {n: "Belgrad", c: [44.7866, 20.4489]},
+        {n: "Bratislava", c: [48.1486, 17.1077]}, {n: "Ljubljana", c: [46.0569, 14.5058]},
+        {n: "Madrid", c: [40.4168, -3.7038]}, {n: "Prag", c: [50.0755, 14.4378]},
+        {n: "Ankara", c: [39.9334, 32.8597]}, {n: "Budapest", c: [47.4979, 19.0402]},
+        {n: "Kiew", c: [50.4501, 30.5234]}, {n: "Vatikanstadt", c: [41.9029, 12.4534]},
+        {n: "London", c: [51.5074, -0.1278]}, {n: "Minsk", c: [53.9045, 27.5615]},
+        {n: "Nikosia", c: [35.1856, 33.3823]}
+    ];
+
+    // --- 7. RENDERING ---
+    dGebirge.forEach(x => addPoly(lgGebirge, x.c, x.n, sGebirge, "Gebirge"));
+    dTiefland.forEach(x => addPoly(lgTiefland, x.c, x.n, sTiefland, "Landschaft"));
+    dSeen.forEach(x => addPoly(lgSeen, x.c, x.n, sSee, "Gewässer"));
+    dInseln.forEach(x => addPoly(lgInseln, x.c, x.n, sInsel, "Insel"));
+    dFluesse.forEach(x => addLine(lgFluesse, x.c, x.n, "Fluss"));
+    dStaedte.forEach(s => {
+        let m = L.circleMarker(s.c, { radius: 6, color: '#000', fillColor: '#fff', weight: 1.5, fillOpacity: 1 });
+        m.quizData = { name: s.n, type: "Hauptstadt" };
+        m.on('click', (e) => handleObjectClick(e, m));
+        m.addTo(lgStaedte);
+        searchIndex.push({ name: s.n, layer: m, type: "Hauptstadt", group: lgStaedte });
+    });
+
+    // --- 8. STEUERUNG ---
+    var baseMaps = { "⛰️ Physisches Relief": openTopo, "🛰️ Satellit": esriSattelite };
+    var overlays = {
+        "🏳️ Ländergrenzen": lgLaender,
+        "🏙️ Städte": lgStaedte,
+        "🏔️ Gebirge": lgGebirge,
+        "🌿 Tiefländer": lgTiefland,
+        "〰️ Flüsse": lgFluesse,
+        "💧 Seen": lgSeen,
+        "🏝️ Inseln": lgInseln
+    };
+
+    L.control.layers(baseMaps, overlays, {collapsed: false}).addTo(map);
+    lgLaender.addTo(map);
+    lgGebirge.addTo(map);
+    lgFluesse.addTo(map);
+    lgStaedte.addTo(map);
+
+    // --- 9. QUIZ LOGIK ---
+
     function startQuiz() {
+        // 1. Pool aus sichtbaren Layern erstellen
+        quizPool = [];
+        
+        searchIndex.forEach(item => {
+            // Check ob Layer-Gruppe auf der Karte ist
+            if (map.hasLayer(item.group)) {
+                quizPool.push(item);
+            }
+        });
+
+        if (quizPool.length === 0) {
+            alert("Bitte aktiviere mindestens einen Layer (z.B. Städte oder Flüsse), um das Quiz zu starten.");
+            return;
+        }
+
+        // UI Umschalten
         quizActive = true;
-        sessionPool = [...searchIndex]; // Pool füllen
-        document.getElementById('btn-start').style.display = 'none';
-        document.getElementById('btn-stop').style.display = 'block';
+        score = 0;
+        rounds = 0;
+        document.body.classList.add('quiz-mode');
+        document.getElementById('quiz-start-view').style.display = 'none';
+        document.getElementById('quiz-game-view').style.display = 'block';
+        
+        // Karte vorbereiten: Alle Popups schließen
+        map.closePopup();
+
         nextQuestion();
     }
 
     function stopQuiz() {
         quizActive = false;
-        document.getElementById('btn-start').style.display = 'block';
-        document.getElementById('btn-stop').style.display = 'none';
-        document.getElementById('quiz-question').innerText = "Runde beendet!";
+        document.body.classList.remove('quiz-mode');
+        document.getElementById('quiz-start-view').style.display = 'block';
+        document.getElementById('quiz-game-view').style.display = 'none';
+        
+        // Reset Styles
+        resetStyles();
     }
 
     function nextQuestion() {
-        if(!quizActive) return;
-        if(document.getElementById('no-duplicates').checked && sessionPool.length === 0) {
-            alert("Alle Orte dieser Runde geschafft!");
-            stopQuiz(); return;
+        if (quizPool.length === 0) {
+            document.getElementById('quiz-question').innerText = "Quiz beendet! Alle Objekte gefunden.";
+            return;
+        }
+
+        resetStyles();
+        document.getElementById('quiz-feedback').innerText = "";
+        
+        // Zufälliges Item
+        let idx = Math.floor(Math.random() * quizPool.length);
+        currentQuizItem = quizPool[idx];
+        
+        document.getElementById('quiz-question').innerText = `Wo ist: ${currentQuizItem.name}?`;
+        updateScore();
+    }
+
+    function checkAnswer(clickedData) {
+        if (!currentQuizItem) return;
+
+        let feedback = document.getElementById('quiz-feedback');
+
+        if (clickedData.name === currentQuizItem.name) {
+            // Richtig
+            score++;
+            rounds++;
+            feedback.innerHTML = `<span class="correct">Richtig! 🎉</span>`;
+            
+            // Markiere grün
+            highlightLayer(currentQuizItem.layer, true);
+
+            // Aus Pool entfernen damit es nicht nochmal kommt
+            quizPool = quizPool.filter(i => i.name !== currentQuizItem.name);
+
+            setTimeout(nextQuestion, 1500);
+        } else {
+            // Falsch
+            rounds++;
+            feedback.innerHTML = `<span class="wrong">Falsch, das ist ${clickedData.name}.</span>`;
+            updateScore();
+            
+            // Markiere rot (wenn möglich)
+            // Wir markieren das angeklickte Objekt kurz rot? 
+            // Hier verzichten wir auf komplexe Layer-Suche für das Falsche und lassen den User weiter raten.
+        }
+    }
+
+    function skipQuestion() {
+        rounds++;
+        // Zeige Lösung kurz an (indem wir hinzoomen und popup öffnen? Nein, im Quiz Modus besser nur weiter)
+        document.getElementById('quiz-feedback').innerHTML = `<span class="wrong">Übersprungen: Das war ${currentQuizItem.name}</span>`;
+        
+        // Markiere es kurz, damit man lernt
+        highlightLayer(currentQuizItem.layer, true); // Grün zeigen
+        
+        setTimeout(nextQuestion, 2000);
+    }
+
+    function updateScore() {
+        document.getElementById('quiz-score').innerText = `Punkte: ${score} | Versuche: ${rounds}`;
+    }
+
+    function highlightLayer(layer, isCorrect) {
+        let color = isCorrect ? '#2ecc71' : '#e74c3c';
+        
+        if (layer.setStyle) {
+            // Polygon / Polyline
+            layer.originalStyle = { 
+                color: layer.options.color, 
+                weight: layer.options.weight,
+                fillColor: layer.options.fillColor 
+            };
+            layer.setStyle({ color: color, weight: layer.options.weight + 3, fillColor: color });
+        } else if (layer.getElement) {
+            // Marker (CSS Manipulation)
+            // Bei CircleMarker:
+            layer.originalStyle = { color: layer.options.color, fillColor: layer.options.fillColor };
+            layer.setStyle({ color: color, fillColor: color });
+        } else if (layer.getLayers) {
+            // FeatureGroup (bei unseren Flüssen mit unsichtbarer Linie)
+            layer.getLayers()[0].setStyle({ color: color, weight: 6 });
+        }
+    }
+
+    function resetStyles() {
+        // Da wir nicht tracken, welche alle geändert wurden, iterieren wir durch den Index,
+        // oder einfacher: beim nächsten Klick/Frage wird das alte Objekt nicht explizit resettet, 
+        // aber wir können den style resetten, wenn wir die referenz im Objekt speichern.
+        // Vereinfachung: Wir setzen beim Highlighten "originalStyle"
+        
+        searchIndex.forEach(item => {
+            let l = item.layer;
+            // FeatureGroup Sonderbehandlung
+            if (item.parent) l = item.parent.getLayers()[0]; // Die sichtbare Linie
+
+            if (l.originalStyle) {
+                l.setStyle(l.originalStyle);
+                delete l.originalStyle;
+            } else if (item.type === "Fluss") {
+                 // Fallback für Flüsse
+                 l.setStyle({ color: '#1e3799', weight: 2.5 });
+            }
+        });
+    }
+
+
+    // --- 10. SUCH-LOGIK (MIT ENTER-FUNKTION) ---
+    const sInput = document.getElementById('search-input');
+    const sRes = document.getElementById('search-results');
+    let currentMatches = [];
+
+    function zoomToItem(item) {
+        if (!map.hasLayer(item.group)) {
+             map.addLayer(item.group); // Layer automatisch aktivieren wenn gesucht
+             // Update Checkbox in Control (etwas hacky via DOM, aber hier reicht visual add)
+        }
+
+        if (item.layer.getBounds) {
+            map.fitBounds(item.layer.getBounds(), { padding: [50, 50], maxZoom: 8 });
+        } else {
+            map.setView(item.layer.getLatLng(), 8);
         }
         
-        let pool = document.getElementById('no-duplicates').checked ? sessionPool : searchIndex;
-        currentTarget = pool[Math.floor(Math.random() * pool.length)];
-        document.getElementById('quiz-question').innerText = `Suche: ${currentTarget.name}`;
-    }
-
-    function checkAnswer(name) {
-        const feedback = document.getElementById('feedback-overlay');
-        feedback.style.display = 'block';
-        if(name === currentTarget.name) {
-            feedback.innerText = "✅ Richtig! +10 XP";
-            feedback.style.background = "var(--success)";
-            totalXP += 10;
-            if(document.getElementById('no-duplicates').checked) {
-                sessionPool = sessionPool.filter(i => i.name !== name);
-            }
-            if(!masteredItems.includes(name)) masteredItems.push(name);
-            localStorage.setItem('geoMastered_v7', JSON.stringify(masteredItems));
-            localStorage.setItem('geoTotalXP_v7', totalXP);
-            updateUI();
-            setTimeout(() => { feedback.style.display = 'none'; nextQuestion(); }, 800);
-        } else {
-            feedback.innerText = "❌ Falsch!";
-            feedback.style.background = "var(--danger)";
-            setTimeout(() => feedback.style.display = 'none', 800);
+        // Popup öffnen (Nur wenn KEIN Quiz aktiv ist)
+        if (!quizActive) {
+            setTimeout(() => {
+                // Manuelles Öffnen via Funktion, da wir .bindPopup entfernt haben
+                let content = createPopupContent(item.type, item.name);
+                L.popup()
+                    .setLatLng(item.layer.getBounds ? item.layer.getBounds().getCenter() : item.layer.getLatLng())
+                    .setContent(content)
+                    .openOn(map);
+            }, 400);
         }
+        
+        sRes.style.display = 'none';
+        sInput.value = item.name;
     }
 
-    function updateUI() {
-        document.getElementById('stat-xp').innerText = totalXP;
-        const percent = Math.round((masteredItems.length / searchIndex.length) * 100);
-        document.getElementById('progress-bar').style.width = percent + '%';
-        document.getElementById('progress-text').innerText = percent + '% gelernt';
-    }
+    sInput.addEventListener('input', function() {
+        const val = this.value.toLowerCase();
+        sRes.innerHTML = '';
+        currentMatches = [];
+        
+        if (val.length < 2) { 
+            sRes.style.display = 'none'; 
+            return; 
+        }
 
-    // --- DATEN-IMPORT (PDF AUSZUG) [cite: 6, 7, 8, 13, 14, 16] ---
-    // Gebirge
-    addPoly(lgGebirge, [[58,6], [62,10], [69,19], [70,25], [60,5]], "Skandinavisches Gebirge", "Gebirge", "#8b4513");
-    addPoly(lgGebirge, [[50,58], [60,59], [66,65], [52,60]], "Ural", "Gebirge", "#8b4513");
-    addPoly(lgGebirge, [[44,7], [48,16], [46,14]], "Alpen", "Gebirge", "#8b4513");
-    addPoly(lgGebirge, [[43,-1.5], [42.5,3]], "Pyrenäen", "Gebirge", "#8b4513");
-    addPoly(lgGebirge, [[44,37], [41,49], [42,50]], "Kaukasus", "Gebirge", "#8b4513");
-    addPoly(lgGebirge, [[50.5,15], [51,16], [50,17.5]], "Sudeten", "Gebirge", "#8b4513");
+        currentMatches = searchIndex.filter(i => i.name.toLowerCase().includes(val));
+        const showMatches = currentMatches.slice(0, 10);
 
-    // Flüsse [cite: 13]
-    addLine(lgFluesse, [[62,11.5], [59,10.9]], "Glama");
-    addLine(lgFluesse, [[62,12], [59,13.5]], "Klarälv");
-    addLine(lgFluesse, [[57,33], [53,49], [46,48]], "Wolga");
-    addLine(lgFluesse, [[48,8], [47,19], [45,29]], "Donau");
-    addLine(lgFluesse, [[46,9], [51,4]], "Rhein");
-    addLine(lgFluesse, [[50,15], [53,8]], "Elbe");
-    addLine(lgFluesse, [[54,38], [47,39]], "Don");
+        if (showMatches.length > 0) {
+            sRes.style.display = 'block';
+            showMatches.forEach((m, index) => {
+                let div = document.createElement('div');
+                div.className = 'search-item';
+                div.innerHTML = `<span class="search-name">${m.name}</span><span class="search-type">${m.type}</span>`;
+                div.onclick = () => zoomToItem(m);
+                sRes.appendChild(div);
+            });
+        } else {
+            sRes.style.display = 'none';
+        }
+    });
 
-    // Seen [cite: 14]
-    addPoly(lgSeen, [[58,12], [59,14], [58,14]], "Vänersee", "See", "#3498db");
-    addPoly(lgSeen, [[60,30], [61,33], [60,33]], "Ladogasee", "See", "#3498db");
-    addPoly(lgSeen, [[61,34], [62,36]], "Onegasee", "See", "#3498db");
-    addPoly(lgSeen, [[47.4,9.1], [47.8,9.5]], "Bodensee", "See", "#3498db");
+    sInput.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            if (currentMatches.length > 0) {
+                zoomToItem(currentMatches[0]);
+                sInput.blur();
+            }
+        }
+    });
 
-    // Inseln [cite: 16]
-    addPoly(lgInseln, [[67.5,12], [69,16]], "Lofoten", "Insel", "#9b59b6");
-    addPoly(lgInseln, [[63,-24], [66,-13]], "Island", "Insel", "#9b59b6");
-    addPoly(lgInseln, [[36,12], [38,15]], "Sizilien", "Insel", "#9b59b6");
-    addPoly(lgInseln, [[44,32], [46,36]], "Krim", "Halbinsel", "#9b59b6");
+    document.addEventListener('click', (e) => {
+        if (!document.getElementById('search-container').contains(e.target)) {
+            sRes.style.display = 'none';
+        }
+    });
 
-    // Städte
-    addCity([52.52, 13.40], "Berlin");
-    addCity([48.85, 2.35], "Paris");
-    addCity([55.75, 37.61], "Moskau");
-    addCity([51.50, -0.12], "London");
-
-    updateUI();
 </script>
 </body>
 </html>
