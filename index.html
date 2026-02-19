@@ -84,7 +84,7 @@
             flex-direction: column;
             align-items: center;
             gap: 10px;
-            min-width: 300px;
+            min-width: 320px;
             text-align: center;
         }
 
@@ -104,6 +104,7 @@
         .quiz-btn.stop { background: #e74c3c; }
 
         #quiz-question { font-size: 1.2em; font-weight: bold; color: #2c3e50; margin: 5px 0; }
+        #quiz-type-hint { font-size: 0.85em; color: #e67e22; font-weight: bold; text-transform: uppercase; margin-bottom: 5px; }
         #quiz-score { font-size: 0.9em; color: #7f8c8d; }
         #quiz-feedback { font-weight: bold; height: 20px; font-size: 0.9em; }
         .correct { color: #27ae60; }
@@ -130,6 +131,7 @@
     
     <div id="quiz-game-view" style="display:none;">
         <div id="quiz-score">Punkte: 0 | Runde: 0</div>
+        <div id="quiz-type-hint">Kategorie</div>
         <div id="quiz-question">Wo liegt...?</div>
         <div id="quiz-feedback"></div>
         <div style="margin-top:10px;">
@@ -184,7 +186,7 @@
     const sInsel = { color: '#6c5ce7', fillColor: '#a29bfe', weight: 1, fillOpacity: 0.3 };
     const sFluss = { color: '#1e3799', weight: 2.5, opacity: 0.9 };
 
-    let searchIndex = []; // Für Suche und Quiz
+    let searchIndex = []; 
     
     // QUIZ STATE
     let quizActive = false;
@@ -193,10 +195,8 @@
     let score = 0;
     let rounds = 0;
 
-    // Generische Funktion zum Hinzufügen von Objekten
     function addPoly(group, coords, name, style, type) {
         let p = L.polygon(coords, style);
-        // Wir binden das Popup nicht direkt, sondern nutzen Event-Handling
         p.quizData = { name: name, type: type };
         p.on('click', (e) => handleObjectClick(e, p));
         p.addTo(group);
@@ -204,18 +204,15 @@
     }
 
     function addLine(group, coords, name, type) {
-        // Größere Klick-Toleranz für Linien (Flüsse) durch unsichtbare dicke Linie
         let l = L.polyline(coords, sFluss);
-        let touchLine = L.polyline(coords, { weight: 15, opacity: 0 }); // Unsichtbarer Klick-Bereich
+        let touchLine = L.polyline(coords, { weight: 15, opacity: 0 }); 
         
         let featureGroup = L.featureGroup([l, touchLine]);
         featureGroup.quizData = { name: name, type: type };
         
-        // Popup und Events auf die Gruppe
         featureGroup.on('click', (e) => handleObjectClick(e, featureGroup));
         featureGroup.addTo(group);
         
-        // Referenz für Suche (wir zoomen auf die sichtbare Linie)
         searchIndex.push({ name: name, layer: l, type: type, group: group, parent: featureGroup });
     }
 
@@ -223,12 +220,10 @@
         return `<div class="cat-header">${type}</div><div class="item-name">${name}</div>`;
     }
 
-    // Zentrale Klick-Logik
     function handleObjectClick(e, layer) {
         if (quizActive) {
             checkAnswer(layer.quizData);
         } else {
-            // Normaler Modus: Popup öffnen
             let content = createPopupContent(layer.quizData.type, layer.quizData.name);
             L.popup()
                 .setLatLng(e.latlng)
@@ -237,9 +232,8 @@
         }
     }
 
-    // --- 6. DATEN (FLÜSSE VERBESSERT) ---
+    // --- 6. DATEN (ALLE UNGEKÜRZT) ---
 
-    // A. GEBIRGE (Original)
     const dGebirge = [
         {n: "Skandinavisches Gebirge", c: [[58.5,6.0], [61.0,7.5], [63.0,11.0], [68.0,18.0], [70.5,23.0], [69.5,26.0], [66.0,19.0], [61.5,12.0], [59.0,9.0]]},
         {n: "Ural", c: [[68.0,66.0], [66.0,65.0], [62.0,59.0], [59.0,59.0], [55.0,59.0], [51.0,58.0], [51.0,61.0], [55.0,61.5], [62.0,61.0], [67.0,67.5]]},
@@ -268,7 +262,6 @@
         {n: "Timanrücken", c: [[63.0,50.0], [65.0,49.0], [67.0,48.0], [67.5,50.0], [65.0,53.0]]}
     ];
 
-    // B. TIEFLÄNDER (Original)
     const dTiefland = [
         {n: "Norddt. Tiefland", c: [[52.0,6.0], [54.0,7.5], [54.5,13.5], [52.5,14.5], [51.5,11.0]]},
         {n: "Londoner Becken", c: [[51.2,-1.2], [51.9,0.5], [51.5,1.2], [51.0,0.5]]},
@@ -287,7 +280,6 @@
         {n: "Poebene", c: [[44.8,7.5], [45.5,9.5], [45.5,12.5], [44.5,12.0]]}
     ];
 
-    // C. INSELN (Original)
     const dInseln = [
         {n: "Island", c: [[63.4,-24.5], [66.5,-24.5], [66.5,-13.5], [63.4,-13.5]]}, 
         {n: "Lofoten", c: [[67.4,11.9], [68.3,13.5], [69.4,16.2], [68.2,15.5]]},
@@ -320,7 +312,6 @@
         {n: "Rhodos", c: [[35.8,27.7], [36.4,28.2], [35.9,28.0]]}
     ];
 
-    // D. FLÜSSE (VERBESSERT: Genauere Verläufe für die großen Flüsse)
     const dFluesse = [
         {n: "Glama", c: [[62.0,11.5], [61.1,11.3], [60.2,11.7], [59.2,10.9]]},
         {n: "Klarälv", c: [[62.5,12.0], [61.0,13.0], [59.4,13.5]]},
@@ -384,7 +375,6 @@
         {n: "Maritza", c: [[42.2,23.6], [42.1,25.0], [41.7,26.2], [40.7,26.1]]}
     ];
 
-    // E. SEEN & STAUSEEN (Original)
     const dSeen = [
         {n: "Ladogasee", c: [[59.9,30.0], [61.0,30.0], [61.7,31.5], [61.0,33.0], [60.0,32.5]]},
         {n: "Onegasee", c: [[61.0,34.2], [62.5,34.5], [62.8,36.0], [61.5,36.5], [60.9,35.8]]},
@@ -405,7 +395,6 @@
         {n: "Kachiwkaer Stausee", c: [[46.8,33.5], [47.5,35.0], [47.3,35.5], [46.7,34.0]]}
     ];
 
-    // F. STÄDTE / HAUPTSTÄDTE (Original)
     const dStaedte = [
         {n: "Tirana", c: [41.3275, 19.8187]}, {n: "Andorra la Vella", c: [42.5063, 1.5218]},
         {n: "Brüssel", c: [50.8503, 4.3517]}, {n: "Sarajevo", c: [43.8563, 18.4131]},
@@ -468,11 +457,9 @@
     // --- 9. QUIZ LOGIK ---
 
     function startQuiz() {
-        // 1. Pool aus sichtbaren Layern erstellen
         quizPool = [];
         
         searchIndex.forEach(item => {
-            // Check ob Layer-Gruppe auf der Karte ist
             if (map.hasLayer(item.group)) {
                 quizPool.push(item);
             }
@@ -483,7 +470,6 @@
             return;
         }
 
-        // UI Umschalten
         quizActive = true;
         score = 0;
         rounds = 0;
@@ -491,9 +477,7 @@
         document.getElementById('quiz-start-view').style.display = 'none';
         document.getElementById('quiz-game-view').style.display = 'block';
         
-        // Karte vorbereiten: Alle Popups schließen
         map.closePopup();
-
         nextQuestion();
     }
 
@@ -503,12 +487,12 @@
         document.getElementById('quiz-start-view').style.display = 'block';
         document.getElementById('quiz-game-view').style.display = 'none';
         
-        // Reset Styles
         resetStyles();
     }
 
     function nextQuestion() {
         if (quizPool.length === 0) {
+            document.getElementById('quiz-type-hint').innerText = "Geschafft!";
             document.getElementById('quiz-question').innerText = "Quiz beendet! Alle Objekte gefunden.";
             return;
         }
@@ -516,11 +500,12 @@
         resetStyles();
         document.getElementById('quiz-feedback').innerText = "";
         
-        // Zufälliges Item
         let idx = Math.floor(Math.random() * quizPool.length);
         currentQuizItem = quizPool[idx];
         
-        document.getElementById('quiz-question').innerText = `Wo ist: ${currentQuizItem.name}?`;
+        // HIER NEU: Anzeige von Kategorie und Name in der Frage
+        document.getElementById('quiz-type-hint').innerText = `Kategorie: ${currentQuizItem.type}`;
+        document.getElementById('quiz-question').innerText = `Wo liegt: ${currentQuizItem.name}?`;
         updateScore();
     }
 
@@ -530,38 +515,26 @@
         let feedback = document.getElementById('quiz-feedback');
 
         if (clickedData.name === currentQuizItem.name) {
-            // Richtig
             score++;
             rounds++;
             feedback.innerHTML = `<span class="correct">Richtig! 🎉</span>`;
             
-            // Markiere grün
             highlightLayer(currentQuizItem.layer, true);
-
-            // Aus Pool entfernen damit es nicht nochmal kommt
             quizPool = quizPool.filter(i => i.name !== currentQuizItem.name);
 
             setTimeout(nextQuestion, 1500);
         } else {
-            // Falsch
             rounds++;
             feedback.innerHTML = `<span class="wrong">Falsch, das ist ${clickedData.name}.</span>`;
             updateScore();
-            
-            // Markiere rot (wenn möglich)
-            // Wir markieren das angeklickte Objekt kurz rot? 
-            // Hier verzichten wir auf komplexe Layer-Suche für das Falsche und lassen den User weiter raten.
         }
     }
 
     function skipQuestion() {
         rounds++;
-        // Zeige Lösung kurz an (indem wir hinzoomen und popup öffnen? Nein, im Quiz Modus besser nur weiter)
         document.getElementById('quiz-feedback').innerHTML = `<span class="wrong">Übersprungen: Das war ${currentQuizItem.name}</span>`;
         
-        // Markiere es kurz, damit man lernt
-        highlightLayer(currentQuizItem.layer, true); // Grün zeigen
-        
+        highlightLayer(currentQuizItem.layer, true); 
         setTimeout(nextQuestion, 2000);
     }
 
@@ -573,7 +546,6 @@
         let color = isCorrect ? '#2ecc71' : '#e74c3c';
         
         if (layer.setStyle) {
-            // Polygon / Polyline
             layer.originalStyle = { 
                 color: layer.options.color, 
                 weight: layer.options.weight,
@@ -581,32 +553,22 @@
             };
             layer.setStyle({ color: color, weight: layer.options.weight + 3, fillColor: color });
         } else if (layer.getElement) {
-            // Marker (CSS Manipulation)
-            // Bei CircleMarker:
             layer.originalStyle = { color: layer.options.color, fillColor: layer.options.fillColor };
             layer.setStyle({ color: color, fillColor: color });
         } else if (layer.getLayers) {
-            // FeatureGroup (bei unseren Flüssen mit unsichtbarer Linie)
             layer.getLayers()[0].setStyle({ color: color, weight: 6 });
         }
     }
 
     function resetStyles() {
-        // Da wir nicht tracken, welche alle geändert wurden, iterieren wir durch den Index,
-        // oder einfacher: beim nächsten Klick/Frage wird das alte Objekt nicht explizit resettet, 
-        // aber wir können den style resetten, wenn wir die referenz im Objekt speichern.
-        // Vereinfachung: Wir setzen beim Highlighten "originalStyle"
-        
         searchIndex.forEach(item => {
             let l = item.layer;
-            // FeatureGroup Sonderbehandlung
-            if (item.parent) l = item.parent.getLayers()[0]; // Die sichtbare Linie
+            if (item.parent) l = item.parent.getLayers()[0]; 
 
             if (l.originalStyle) {
                 l.setStyle(l.originalStyle);
                 delete l.originalStyle;
             } else if (item.type === "Fluss") {
-                 // Fallback für Flüsse
                  l.setStyle({ color: '#1e3799', weight: 2.5 });
             }
         });
@@ -620,8 +582,7 @@
 
     function zoomToItem(item) {
         if (!map.hasLayer(item.group)) {
-             map.addLayer(item.group); // Layer automatisch aktivieren wenn gesucht
-             // Update Checkbox in Control (etwas hacky via DOM, aber hier reicht visual add)
+             map.addLayer(item.group);
         }
 
         if (item.layer.getBounds) {
@@ -630,10 +591,8 @@
             map.setView(item.layer.getLatLng(), 8);
         }
         
-        // Popup öffnen (Nur wenn KEIN Quiz aktiv ist)
         if (!quizActive) {
             setTimeout(() => {
-                // Manuelles Öffnen via Funktion, da wir .bindPopup entfernt haben
                 let content = createPopupContent(item.type, item.name);
                 L.popup()
                     .setLatLng(item.layer.getBounds ? item.layer.getBounds().getCenter() : item.layer.getLatLng())
