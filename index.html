@@ -17,17 +17,35 @@
             box-shadow: 0 0 15px rgba(0,0,0,0.3) !important;
             border-radius: 8px !important;
             padding: 10px !important;
+            transition: opacity 0.3s;
         }
 
         /* Popup Styling */
         .cat-header { font-size: 0.75em; font-weight: bold; text-transform: uppercase; color: #555; border-bottom: 1px solid #ccc; margin-bottom: 5px; padding-bottom: 2px; }
         .item-name { font-size: 1.2em; font-weight: bold; color: #2c3e50; }
 
+        /* --- UI TOGGLE BUTTON --- */
+        #ui-toggle-btn {
+            position: absolute;
+            top: 20px;
+            left: 15px;
+            z-index: 2000;
+            background: white;
+            border: none;
+            padding: 10px;
+            border-radius: 8px;
+            font-size: 18px;
+            cursor: pointer;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+            transition: all 0.2s;
+        }
+        #ui-toggle-btn:hover { background: #f0f0f0; transform: scale(1.05); }
+
         /* --- SUCHFUNKTION STYLING --- */
         #search-container {
             position: absolute;
             top: 20px;
-            left: 60px; 
+            left: 70px; 
             z-index: 1000;
             width: 320px;
             transition: opacity 0.3s;
@@ -86,6 +104,7 @@
             gap: 10px;
             min-width: 320px;
             text-align: center;
+            transition: opacity 0.3s;
         }
 
         .quiz-btn {
@@ -109,13 +128,23 @@
         #quiz-feedback { font-weight: bold; height: 20px; font-size: 0.9em; }
         .correct { color: #27ae60; }
         .wrong { color: #c0392b; }
+        .hint { color: #f39c12; }
 
         /* Verstecke UI Elemente im Quiz Modus wenn nötig */
         body.quiz-mode #search-container { opacity: 0; pointer-events: none; }
         
+        /* Modus: Alles UI Ausgeblendet AUSSER dem Quiz-Panel */
+        body.ui-hidden #search-container,
+        body.ui-hidden .leaflet-control-layers {
+            opacity: 0 !important;
+            pointer-events: none !important;
+        }
+        
     </style>
 </head>
 <body>
+
+<button id="ui-toggle-btn" onclick="toggleUI()" title="UI Ein-/Ausblenden">👁️</button>
 
 <div id="search-container">
     <input type="text" id="search-input" placeholder="🔍 Suche nach Berg, Stadt, Fluss... (Enter)">
@@ -150,7 +179,15 @@
     var map = L.map('map', { zoomControl: false }).setView([50.0, 15.0], 4);
     L.control.zoom({ position: 'topright' }).addTo(map);
 
-    // --- 2. BASE-LAYERS ---
+    // --- 2. PANES (EBENEN) FÜR KLICK-HIERARCHIE ---
+    map.createPane('tieflandPane'); map.getPane('tieflandPane').style.zIndex = 400;
+    map.createPane('gebirgePane');  map.getPane('gebirgePane').style.zIndex = 410;
+    map.createPane('inselnPane');   map.getPane('inselnPane').style.zIndex = 420;
+    map.createPane('seenPane');     map.getPane('seenPane').style.zIndex = 430;
+    map.createPane('fluessePane');  map.getPane('fluessePane').style.zIndex = 440;
+    map.createPane('staedtePane');  map.getPane('staedtePane').style.zIndex = 450;
+
+    // --- 3. BASE-LAYERS ---
     var openTopo = L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {
         maxZoom: 17,
         attribution: 'Map data: © OpenStreetMap, SRTM | Map style: © OpenTopoMap'
@@ -160,7 +197,7 @@
         attribution: 'Tiles © Esri'
     });
 
-    // --- 3. LAYER GRUPPEN ---
+    // --- 4. LAYER GRUPPEN ---
     var lgLaender = L.layerGroup();
     var lgGebirge = L.layerGroup();
     var lgTiefland = L.layerGroup();
@@ -168,8 +205,11 @@
     var lgSeen = L.layerGroup();
     var lgInseln = L.layerGroup();
     var lgStaedte = L.layerGroup();
+    
+    // Dummy-Layer für die Hilfestellungen (Zoom & Blink)
+    var lgHints = L.layerGroup().addTo(map); // Standardmäßig aktiviert
 
-    // --- 4. LÄNDERGRENZEN ---
+    // --- 5. LÄNDERGRENZEN ---
     fetch('https://raw.githubusercontent.com/datasets/geo-boundaries-world-110m/master/countries.geojson')
         .then(res => res.json())
         .then(data => {
@@ -179,12 +219,12 @@
             }).addTo(lgLaender);
         });
 
-    // --- 5. HILFSFUNKTIONEN & GLOBALER INDEX ---
-    const sGebirge = { color: '#8B4513', fillColor: '#A0522D', weight: 1, fillOpacity: 0.35 };
-    const sTiefland = { color: '#228B22', fillColor: '#90EE90', weight: 1, fillOpacity: 0.25 };
-    const sSee = { color: '#2980b9', fillColor: '#3498db', weight: 1, fillOpacity: 0.6 };
-    const sInsel = { color: '#6c5ce7', fillColor: '#a29bfe', weight: 1, fillOpacity: 0.3 };
-    const sFluss = { color: '#1e3799', weight: 2.5, opacity: 0.9 };
+    // --- 6. HILFSFUNKTIONEN & STYLES ---
+    const sGebirge = { color: '#8B4513', fillColor: '#A0522D', weight: 1, fillOpacity: 0.35, pane: 'gebirgePane' };
+    const sTiefland = { color: '#228B22', fillColor: '#90EE90', weight: 1, fillOpacity: 0.25, pane: 'tieflandPane' };
+    const sSee = { color: '#2980b9', fillColor: '#3498db', weight: 1, fillOpacity: 0.6, pane: 'seenPane' };
+    const sInsel = { color: '#6c5ce7', fillColor: '#a29bfe', weight: 1, fillOpacity: 0.3, pane: 'inselnPane' };
+    const sFluss = { color: '#1e3799', weight: 2.5, opacity: 0.9, pane: 'fluessePane' };
 
     let searchIndex = []; 
     
@@ -194,6 +234,12 @@
     let currentQuizItem = null;
     let score = 0;
     let rounds = 0;
+    let failedAttempts = 0; // Zähler für die Fehlversuche
+
+    // UI TOGGLE FUNKTION
+    function toggleUI() {
+        document.body.classList.toggle('ui-hidden');
+    }
 
     function addPoly(group, coords, name, style, type) {
         let p = L.polygon(coords, style);
@@ -205,7 +251,7 @@
 
     function addLine(group, coords, name, type) {
         let l = L.polyline(coords, sFluss);
-        let touchLine = L.polyline(coords, { weight: 15, opacity: 0 }); 
+        let touchLine = L.polyline(coords, { weight: 15, opacity: 0, pane: 'fluessePane' }); 
         
         let featureGroup = L.featureGroup([l, touchLine]);
         featureGroup.quizData = { name: name, type: type };
@@ -232,8 +278,7 @@
         }
     }
 
-    // --- 6. DATEN (ALLE UNGEKÜRZT) ---
-
+    // --- 7. DATEN (KOMPLETT) ---
     const dGebirge = [
         {n: "Skandinavisches Gebirge", c: [[58.5,6.0], [61.0,7.5], [63.0,11.0], [68.0,18.0], [70.5,23.0], [69.5,26.0], [66.0,19.0], [61.5,12.0], [59.0,9.0]]},
         {n: "Ural", c: [[68.0,66.0], [66.0,65.0], [62.0,59.0], [59.0,59.0], [55.0,59.0], [51.0,58.0], [51.0,61.0], [55.0,61.5], [62.0,61.0], [67.0,67.5]]},
@@ -422,23 +467,24 @@
         {n: "Nikosia", c: [35.1856, 33.3823]}
     ];
 
-    // --- 7. RENDERING ---
+    // --- 8. RENDERING ---
     dGebirge.forEach(x => addPoly(lgGebirge, x.c, x.n, sGebirge, "Gebirge"));
     dTiefland.forEach(x => addPoly(lgTiefland, x.c, x.n, sTiefland, "Landschaft"));
     dSeen.forEach(x => addPoly(lgSeen, x.c, x.n, sSee, "Gewässer"));
     dInseln.forEach(x => addPoly(lgInseln, x.c, x.n, sInsel, "Insel"));
     dFluesse.forEach(x => addLine(lgFluesse, x.c, x.n, "Fluss"));
     dStaedte.forEach(s => {
-        let m = L.circleMarker(s.c, { radius: 6, color: '#000', fillColor: '#fff', weight: 1.5, fillOpacity: 1 });
+        let m = L.circleMarker(s.c, { radius: 6, color: '#000', fillColor: '#fff', weight: 1.5, fillOpacity: 1, pane: 'staedtePane' });
         m.quizData = { name: s.n, type: "Hauptstadt" };
         m.on('click', (e) => handleObjectClick(e, m));
         m.addTo(lgStaedte);
         searchIndex.push({ name: s.n, layer: m, type: "Hauptstadt", group: lgStaedte });
     });
 
-    // --- 8. STEUERUNG ---
+    // --- 9. STEUERUNG ---
     var baseMaps = { "⛰️ Physisches Relief": openTopo, "🛰️ Satellit": esriSattelite };
     var overlays = {
+        "💡 Hilfestellungen (Zoom & Blink)": lgHints,
         "🏳️ Ländergrenzen": lgLaender,
         "🏙️ Städte": lgStaedte,
         "🏔️ Gebirge": lgGebirge,
@@ -454,7 +500,7 @@
     lgFluesse.addTo(map);
     lgStaedte.addTo(map);
 
-    // --- 9. QUIZ LOGIK ---
+    // --- 10. QUIZ LOGIK ---
 
     function startQuiz() {
         quizPool = [];
@@ -498,12 +544,12 @@
         }
 
         resetStyles();
+        failedAttempts = 0; // Fehlversuche für neue Frage zurücksetzen
         document.getElementById('quiz-feedback').innerText = "";
         
         let idx = Math.floor(Math.random() * quizPool.length);
         currentQuizItem = quizPool[idx];
         
-        // HIER NEU: Anzeige von Kategorie und Name in der Frage
         document.getElementById('quiz-type-hint').innerText = `Kategorie: ${currentQuizItem.type}`;
         document.getElementById('quiz-question').innerText = `Wo liegt: ${currentQuizItem.name}?`;
         updateScore();
@@ -513,6 +559,7 @@
         if (!currentQuizItem) return;
 
         let feedback = document.getElementById('quiz-feedback');
+        let hintsEnabled = map.hasLayer(lgHints); // Check ob Tipps an sind
 
         if (clickedData.name === currentQuizItem.name) {
             score++;
@@ -525,7 +572,35 @@
             setTimeout(nextQuestion, 1500);
         } else {
             rounds++;
-            feedback.innerHTML = `<span class="wrong">Falsch, das ist ${clickedData.name}.</span>`;
+            failedAttempts++;
+            
+            if (hintsEnabled && failedAttempts >= 3) {
+                let targetLayer = currentQuizItem.layer;
+                
+                if (failedAttempts < 5) {
+                    // Stufe 1: Nur zoomen
+                    feedback.innerHTML = `<span class="hint">Tipp: Schau mal hier in der Region! 🔎</span>`;
+                    if (targetLayer.getBounds) {
+                        map.fitBounds(targetLayer.getBounds(), { padding: [50, 50], maxZoom: 6, animate: true });
+                    } else {
+                        map.setView(targetLayer.getLatLng(), 6, { animate: true });
+                    }
+                } else {
+                    // Stufe 2: Zoomen & kurz aufblinken lassen (ab 5 Versuchen)
+                    feedback.innerHTML = `<span class="hint">Tipp: Das gesuchte Objekt blinkt jetzt gelb auf! 💡</span>`;
+                    if (targetLayer.getBounds) {
+                        map.fitBounds(targetLayer.getBounds(), { padding: [50, 50], maxZoom: 6, animate: true });
+                    } else {
+                        map.setView(targetLayer.getLatLng(), 6, { animate: true });
+                    }
+                    
+                    highlightLayer(targetLayer, false);
+                    setTimeout(() => { resetStyles(); }, 2000);
+                }
+            } else {
+                // Normales Feedback, wenn Tipps aus sind oder noch < 3 Versuche
+                feedback.innerHTML = `<span class="wrong">Falsch, das ist ${clickedData.name}.</span>`;
+            }
             updateScore();
         }
     }
@@ -534,8 +609,17 @@
         rounds++;
         document.getElementById('quiz-feedback').innerHTML = `<span class="wrong">Übersprungen: Das war ${currentQuizItem.name}</span>`;
         
-        highlightLayer(currentQuizItem.layer, true); 
-        setTimeout(nextQuestion, 2000);
+        let targetLayer = currentQuizItem.layer;
+        
+        // Zur Lösung hinzoomen, wenn man überspringt
+        if (targetLayer.getBounds) {
+            map.fitBounds(targetLayer.getBounds(), { padding: [50, 50], maxZoom: 6 });
+        } else {
+            map.setView(targetLayer.getLatLng(), 6);
+        }
+        
+        highlightLayer(targetLayer, true); 
+        setTimeout(nextQuestion, 2500);
     }
 
     function updateScore() {
@@ -543,7 +627,10 @@
     }
 
     function highlightLayer(layer, isCorrect) {
-        let color = isCorrect ? '#2ecc71' : '#e74c3c';
+        let color = isCorrect ? '#2ecc71' : '#e74c3c'; // grün oder rot
+        
+        // Gelb/Orange verwenden, wenn es der Hinweis ab 5 Fehlversuchen ist
+        if (!isCorrect && failedAttempts >= 5) color = '#f1c40f'; 
         
         if (layer.setStyle) {
             layer.originalStyle = { 
@@ -574,8 +661,7 @@
         });
     }
 
-
-    // --- 10. SUCH-LOGIK (MIT ENTER-FUNKTION) ---
+    // --- 11. SUCH-LOGIK (MIT ENTER-FUNKTION) ---
     const sInput = document.getElementById('search-input');
     const sRes = document.getElementById('search-results');
     let currentMatches = [];
